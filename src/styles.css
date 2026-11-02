@@ -287,4 +287,4 @@ td{border-color:var(--line)}
 
 
 /* Promoção: selo discreto, sem a bolha bege/laranja no desenho do produto. */
-.product-card-promo .product-art i{background:var(--forest);color:#fff8e8;border:0;border-radius:6px;padding:6px 9px;box-shadow:0 2px 7px #17291f30;font-style:normal;font-weight:800;}
+.product-card-promo .product-art i{background:transparent;color:#fff8e8;border:0;border-radius:0;padding:0;box-shadow:none;font-style:normal;font-weight:800;text-shadow:0 1px 4px #17291f99;}
