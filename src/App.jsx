@@ -243,6 +243,42 @@ export default function App(){
    setSavingPromo(false);
   }
  }
+ async function saveProduct(){
+  if(!profile?.store_id){setNotice("Sua sessão expirou. Entre novamente no painel.");return}
+  const name=String(editing?.name||"").trim();
+  const price=Number(String(editing?.price??"").replace(",","."));
+  if(!name){setNotice("Informe o nome do produto.");return}
+  if(!Number.isFinite(price)||price<0){setNotice("Informe um preço válido.");return}
+  setDataLoading(true);
+  try{
+   const isOfficial=typeof editing.id==="string"&&/^[0-9a-f-]{36}$/i.test(editing.id);
+   const saved=await saveAdminProduct({...editing,name,price,id:isOfficial?editing.id:undefined},profile.store_id);
+   setProducts(old=>{
+    const withoutEditedDemo=old.filter(p=>p.id!==editing.id);
+    const existingIndex=withoutEditedDemo.findIndex(p=>p.id===saved.id);
+    if(existingIndex>=0)return withoutEditedDemo.map(p=>p.id===saved.id?saved:p);
+    return [...withoutEditedDemo,saved];
+   });
+   setEditing(null);
+   setNotice(isOfficial?"Produto atualizado com sucesso no catálogo.":"Produto cadastrado no banco e pronto para edição no catálogo.");
+  }catch(error){
+   setNotice("Não foi possível salvar o produto: "+(error?.message||"verifique sua conexão e as permissões da conta."));
+  }finally{setDataLoading(false)}
+ }
+ async function deleteProduct(id){
+  const product=products.find(p=>p.id===id);
+  if(!product)return;
+  if(!window.confirm('Excluir "'+product.name+'" do catálogo? Essa ação não pode ser desfeita.'))return;
+  const isOfficial=typeof id==="string"&&/^[0-9a-f-]{36}$/i.test(id);
+  setDataLoading(true);
+  try{
+   if(isOfficial)await deleteAdminProduct(id,profile.store_id);
+   setProducts(old=>old.filter(p=>p.id!==id));
+   setNotice(isOfficial?"Produto excluído do catálogo online.":"Produto fictício removido desta demonstração.");
+  }catch(error){
+   setNotice("Não foi possível excluir "+product.name+": "+(error?.message||"verifique se há promoções ou registros vinculados a este produto."));
+  }finally{setDataLoading(false)}
+ }
  function newProduct(){setEditing({name:"",category:"Boi",price:"",unit:"kg",note:"",available:true,featured:false})}
  return <div className="app-shell">
   <header className="topbar"><a className="brand" href="#" onClick={e=>{e.preventDefault();setArea("store")}}><span className="brand-mark"><Beef size={25}/></span><span><strong>Açougue Bom Jardim</strong><small>QUALIDADE E CONFIANÇA</small></span></a><div className="top-actions">{area==="store"?<><button className="admin-link" onClick={()=>{setArea("admin");setAdminTab("overview")}}> <LayoutDashboard size={16}/> Área da loja</button><button className="cart-button" onClick={()=>setCartOpen(true)}><ShoppingBag size={18}/> Meu pedido <b>{count}</b></button></>:<button className="admin-link" onClick={()=>setArea("store")}><ArrowLeft size={16}/> Ver cardápio</button>}</div></header>
