@@ -194,59 +194,6 @@ export default function App(){
   finally{setDataLoading(false)}
  }
  async function updateStatus(id,status){try{if(!String(id).startsWith("DEMO-"))await updateAdminOrderStatus(id,status);const changedAt=new Date().toISOString();setOrders(old=>{const next=old.map(o=>o.id===id?{...o,status,statusHistory:[...(o.statusHistory||[{status:o.status,at:o.createdAt}]),{status,at:changedAt}]}:o);localStorage.setItem("bomjardim_orders",JSON.stringify(next));return next});setNotice("Status atualizado. Horário registrado no histórico desta demonstração.")}catch(error){setNotice("Não foi possível atualizar o pedido: "+(error.message||"erro de conexão."))}}
- async function handleSavePromotions(){
-  if(savingPromo)return;
-  setSavingPromo(true);
-  setNotice("Conferindo os produtos selecionados...");
-  try{
-   if(!profile?.store_id)throw new Error("Sua sessão expirou. Entre novamente no painel.");
-   if(profile.role!=="owner")throw new Error("Somente o proprietário pode cadastrar promoções.");
-   const sourceProducts=promoCatalog.length?promoCatalog:adminCatalogProducts;
-   const allProducts=sourceProducts.filter((product,index,array)=>array.findIndex(item=>String(item.id)===String(product.id))===index);
-   const chosen=allProducts.filter(p=>promoSelections[String(p.id)]?.selected);
-   if(!chosen.length)throw new Error("Selecione pelo menos um produto no catálogo.");
-   if(!String(promoDraft.title||"").trim())throw new Error("Informe o título da promoção.");
-   if(!promoDraft.startsAt||!promoDraft.endsAt)throw new Error("Informe data e horário de início e término.");
-   const startsAt=new Date(promoDraft.startsAt),endsAt=new Date(promoDraft.endsAt);
-   if(!Number.isFinite(startsAt.getTime())||!Number.isFinite(endsAt.getTime())||endsAt<=startsAt)throw new Error("O término precisa ser posterior ao início.");
-   setNotice("Conferindo "+chosen.length+" produto(s)...");
-   const currentCatalog=await loadAdminCatalog(profile.store_id);
-   const prepared=[];
-   for(const selected of chosen){
-    const nameKey=selected.name.trim().toLowerCase();
-    let product=(typeof selected.id==="string"&&/^[0-9a-f-]{36}$/i.test(selected.id))
-      ? currentCatalog.find(p=>String(p.id)===String(selected.id))||selected
-      : currentCatalog.find(p=>p.name.trim().toLowerCase()===nameKey);
-    if(!product){
-     product=await saveAdminProduct({...selected,imageUrl:selected.imageUrl||demoMeatImage(selected.category)},profile.store_id);
-     currentCatalog.push(product);
-    }
-    const selection=promoSelections[String(selected.id)]||{};
-    const raw=String(selection.price??"").trim().replace(",",".");
-    const price=Number(raw);
-    if(raw===""||!Number.isFinite(price)||price<0||Number(product.price)<=0||price>Number(product.price))throw new Error("Preço promocional inválido para "+selected.name+". Confira o valor.");
-    prepared.push({productId:product.id,productName:product.name,oldPrice:product.price,promotionalPrice:price,title:promoDraft.title.trim(),description:"",icon:selection.icon||"🔥",startsAt:promoDraft.startsAt,endsAt:promoDraft.endsAt,active:true});
-   }
-   setNotice("Enviando "+prepared.length+" promoção(ões) para o banco...");
-   const saved=await saveAdminPromotions(prepared,profile.store_id);
-   // Exibe imediatamente o retorno confirmado pelo INSERT; as consultas de atualização ficam separadas.
-   setAdminPromos(old=>[...saved,...old.filter(previous=>!saved.some(item=>String(item.id)===String(previous.id)))]);
-   const savedIds=new Set(chosen.map(p=>String(p.id)));
-   setPromoSelections(old=>Object.fromEntries(Object.entries(old).filter(([id,value])=>!(value.selected&&savedIds.has(String(id))))));
-   setNotice("Salvamento confirmado: "+saved.length+" promoção(ões) gravadas. Atualizando o catálogo...");
-   try{
-    const [freshCatalog,freshAdmin,freshPublic]=await Promise.all([loadAdminCatalog(profile.store_id),loadAdminPromotions(profile.store_id),loadPublicPromotions()]);
-    setProducts(old=>[...freshCatalog,...old.filter(p=>!freshCatalog.some(f=>String(f.id)===String(p.id)))]);
-    setAdminPromos(freshAdmin);
-    setPromos(freshPublic);
-    setNotice("Pronto! "+saved.length+" promoção(ões) salvas e exibidas no histórico. As promoções anteriores foram preservadas.");
-   }catch(refreshError){
-    setNotice("As "+saved.length+" promoção(ões) foram gravadas e já aparecem no histórico. A atualização da vitrine ficou pendente: "+(refreshError?.message||"falha ao atualizar consultas."));
-   }
-  }catch(error){
-   setNotice("Não foi possível salvar as promoções: "+(error?.message||"erro inesperado. Tente novamente."));
-  }finally{setSavingPromo(false)}
- }
  async function handleProductImage(file){
   if(!file)return;
   if(!file.type?.startsWith("image/")){setNotice("Selecione uma foto ou imagem da galeria.");return}
