@@ -64,8 +64,6 @@ export default function App(){
  const [category,setCategory]=useState("Todos"),[search,setSearch]=useState(""),[cart,setCart]=useState([]),[cartOpen,setCartOpen]=useState(false);
  const [customer,setCustomer]=useState({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});
  const addressInputRef=useRef(null);
- const presentationVideoRef=useRef(null);
- useEffect(()=>{const video=presentationVideoRef.current;if(!video)return;const start=()=>{if(!video.src){video.src="/bom-jardim-apresentacao.mp4";video.load()}const play=video.play();if(play?.catch)play.catch(()=>{});};if(!("IntersectionObserver" in window)){start();return}const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){start();observer.disconnect()}},{rootMargin:"180px"});observer.observe(video);return()=>observer.disconnect()},[]);
  const [area,setArea]=useState("store"),[adminTab,setAdminTab]=useState("overview"),[editing,setEditing]=useState(null),[notice,setNotice]=useState("");
  const [orderFilter,setOrderFilter]=useState("Novos e pendentes");
  const [orderSearch,setOrderSearch]=useState("");
@@ -148,40 +146,15 @@ export default function App(){
    const createdAt=new Date().toISOString();
    const demoOrder={id:"DEMO-"+demoNumber,createdAt,estimatedDeliveryMinutes:estimatedTime,customer:{...customer},items:cart.map(p=>({...p,price:priceOf(p)})),subtotal,fee,total,payment:customer.payment,status:"Novo",statusHistory:[{status:"Novo",at:createdAt}]};
    const nextOrders=[demoOrder,...orders];setOrders(nextOrders);localStorage.setItem("bomjardim_orders",JSON.stringify(nextOrders));
-   const orderLines=cart.map(p=>"• "+p.name+"
-  "+p.qty+" "+p.unit+" × "+money(priceOf(p))+"/"+p.unit+" = "+money(priceOf(p)*p.qty)).join("
-
-");
-   const whatsappMessage="🥩 AÇOUGUE BOM JARDIM
-"+
-    "📦 NOVO PEDIDO DE DEMONSTRAÇÃO #"+demoNumber+"
-"+
-    "🕒 Recebido em: "+new Date(createdAt).toLocaleString("pt-BR")+"
-
-"+
-    "👤 CLIENTE
-"+customer.name+"
-📞 "+customer.phone+"
-📍 "+customer.address+"
-
-"+
-    "🛒 PRODUTOS
-"+orderLines+"
-
-"+
-    "💰 RESUMO DO PEDIDO
-Produtos: "+money(subtotal)+"
-🛵 Entrega: "+money(fee)+"
-💵 TOTAL: "+money(total)+"
-
-"+
-    "💳 Pagamento: "+customer.payment+(customer.change?"
-💸 Troco para: "+customer.change:"")+
-    (customer.notes?"
-📝 Observações: "+customer.notes:"")+"
-
-❤️ Obrigado pela preferência!
-Pedido fictício para demonstração.";
+   const orderLines=cart.map(p=>"• "+p.name+"\n  "+p.qty+" "+p.unit+" × "+money(priceOf(p))+"/"+p.unit+" = "+money(priceOf(p)*p.qty)).join("\n\n");
+   const whatsappMessage="🥩 AÇOUGUE BOM JARDIM\n"+
+    "📦 NOVO PEDIDO DE DEMONSTRAÇÃO #"+demoNumber+"\n"+
+    "🕒 Recebido em: "+new Date(createdAt).toLocaleString("pt-BR")+"\n\n"+
+    "👤 CLIENTE\n"+customer.name+"\n📞 "+customer.phone+"\n📍 "+customer.address+"\n\n"+
+    "🛒 PRODUTOS\n"+orderLines+"\n\n"+
+    "💰 RESUMO DO PEDIDO\nProdutos: "+money(subtotal)+"\n🛵 Entrega: "+money(fee)+"\n💵 TOTAL: "+money(total)+"\n\n"+
+    "💳 Pagamento: "+customer.payment+(customer.change?"\n💸 Troco para: "+customer.change:"")+
+    (customer.notes?"\n📝 Observações: "+customer.notes:"")+"\n\n❤️ Obrigado pela preferência!\nPedido fictício para demonstração.";
    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});
    setNotice("Pedido de demonstração criado! Abrindo o WhatsApp da loja.");
    window.location.href="https://wa.me/"+STORE_WHATSAPP+"?text="+encodeURIComponent(whatsappMessage);
@@ -203,40 +176,16 @@ Pedido fictício para demonstração.";
    if(error)throw error;
    if(!data?.success)throw new Error(data?.error||"Não foi possível registrar o pedido.");
    const orderItems=Array.isArray(data.items)&&data.items.length?data.items:cart.map(p=>({product_name:p.name,quantity:p.qty,unit:p.unit,unit_price:p.price,line_total:p.price*p.qty}));
-   const orderLines=orderItems.map(item=>"• "+item.product_name+"
-  "+item.quantity+" "+item.unit+" × "+money(item.unit_price)+"/"+item.unit+" = "+money(item.line_total)).join("
-
-");
+   const orderLines=orderItems.map(item=>"• "+item.product_name+"\n  "+item.quantity+" "+item.unit+" × "+money(item.unit_price)+"/"+item.unit+" = "+money(item.line_total)).join("\n\n");
    const receivedAt=new Date().toLocaleString("pt-BR");
-   const whatsappMessage="🥩 AÇOUGUE BOM JARDIM
-"+
-    "📦 NOVO PEDIDO #"+data.order_number+"
-"+
-    "🕒 Recebido em: "+receivedAt+"
-
-"+
-    "👤 CLIENTE
-"+customer.name+"
-📞 "+customer.phone+"
-📍 "+customer.address+"
-
-"+
-    "🛒 PRODUTOS
-"+orderLines+"
-
-"+
-    "💰 RESUMO DO PEDIDO
-Produtos: "+money(data.subtotal)+"
-🛵 Entrega: "+money(data.delivery_fee)+"
-💵 TOTAL: "+money(data.total)+"
-
-"+
-    "💳 Pagamento: "+customer.payment+(customer.change?"
-💸 Troco para: "+customer.change:"")+
-    (customer.notes?"
-📝 Observações: "+customer.notes:"")+"
-
-❤️ Obrigado pela preferência!";
+   const whatsappMessage="🥩 AÇOUGUE BOM JARDIM\n"+
+    "📦 NOVO PEDIDO #"+data.order_number+"\n"+
+    "🕒 Recebido em: "+receivedAt+"\n\n"+
+    "👤 CLIENTE\n"+customer.name+"\n📞 "+customer.phone+"\n📍 "+customer.address+"\n\n"+
+    "🛒 PRODUTOS\n"+orderLines+"\n\n"+
+    "💰 RESUMO DO PEDIDO\nProdutos: "+money(data.subtotal)+"\n🛵 Entrega: "+money(data.delivery_fee)+"\n💵 TOTAL: "+money(data.total)+"\n\n"+
+    "💳 Pagamento: "+customer.payment+(customer.change?"\n💸 Troco para: "+customer.change:"")+
+    (customer.notes?"\n📝 Observações: "+customer.notes:"")+"\n\n❤️ Obrigado pela preferência!";
    window.location.href="https://wa.me/"+STORE_WHATSAPP+"?text="+encodeURIComponent(whatsappMessage);
    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});
    setNotice("Pedido #"+data.order_number+" registrado com sucesso. Abrindo o WhatsApp da loja...");
@@ -304,14 +253,14 @@ Produtos: "+money(data.subtotal)+"
  function newProduct(){setEditing({name:"",category:"Boi",price:"",unit:"kg",note:"",available:true,featured:false})}
  return <div className="app-shell">
   <header className="topbar"><a className="brand" href="#" onClick={e=>{e.preventDefault();setArea("store")}}><span className="brand-mark"><img src="/logo-bom-jardim.jpg" alt="Logo oficial Açougue Bom Jardim"/></span><span><strong>Açougue Bom Jardim</strong><small>QUALIDADE E CONFIANÇA</small></span></a><div className="top-actions">{area==="store"?<><button className="admin-link" onClick={()=>{setArea("admin");setAdminTab("overview")}}> <LayoutDashboard size={16}/> Área da loja</button><button className="cart-button" onClick={()=>setCartOpen(true)}><ShoppingBag size={18}/> Meu pedido <b>{count}</b></button></>:<button className="admin-link" onClick={()=>setArea("store")}><ArrowLeft size={16}/> Ver cardápio</button>}</div></header>
-  {area==="store"?<><main>{delivery.paused&&<div className="store-paused"><strong>Pedidos temporariamente pausados</strong><span>Estamos organizando a loja. Volte em breve!</span></div>}<section className="hero intro-hero"><div className="intro-copy"><span className="eyebrow">AÇOUGUE BOM JARDIM · LINHARES</span><h1>Carne de qualidade,<br/><em>do seu jeito.</em></h1><p>Tradição, variedade e praticidade para escolher seus cortes e fazer seu pedido sem sair de casa.</p><a className="hero-cta" href="#catalog">Ver produtos <span>→</span></a><div className="intro-address"><MapPin size={16}/><span>Rua Luiz Fávero, 276 · Loja 101 · Linhares</span></div></div><div className="intro-video-wrap"><video ref={presentationVideoRef} className="intro-video" poster="/bom-jardim-apresentacao-poster.jpg" muted playsInline loop autoPlay preload="none" aria-label="Apresentação do Açougue Bom Jardim"/><span className="video-caption">CONHEÇA NOSSA LOJA</span></div></section>
+  {area==="store"?<><main>{delivery.paused&&<div className="store-paused"><strong>Pedidos temporariamente pausados</strong><span>Estamos organizando a loja. Volte em breve!</span></div>}<section className="hero intro-hero"><div className="intro-copy"><span className="eyebrow">AÇOUGUE BOM JARDIM · LINHARES</span><h1>Carne de qualidade,<br/><em>do seu jeito.</em></h1><p>Tradição, variedade e praticidade para escolher seus cortes e fazer seu pedido sem sair de casa.</p><a className="hero-cta" href="#catalog">Ver produtos <span>→</span></a><div className="intro-address"><MapPin size={16}/><span>Rua Luiz Fávero, 276 · Loja 101 · Linhares</span></div></div><div className="intro-video-wrap"><video className="intro-video" controls playsInline preload="metadata" poster="/bom-jardim-hero-poster.jpg" aria-label="Vídeo de apresentação do Açougue Bom Jardim"><source src="/bom-jardim-video-compativel.mp4" type="video/mp4"/></video><span className="video-caption">CONHEÇA NOSSA LOJA</span></div></section>
   <section className="trust-row"><div><ShieldCheck/><span><b>Qualidade</b><small>Seleção de cortes</small></span></div><div><Clock3/><span><b>Praticidade</b><small>Peça pelo celular</small></span></div><div><MapPin/><span><b>Entrega</b><small>Consulte sua região</small></span></div></section>
   
   <section className="catalog" id="catalog"><div className="section-heading"><div><span className="eyebrow">NOSSO CATÁLOGO</span><h2>Escolha seus produtos</h2></div><span className="catalog-count">{visible.length} produtos</span></div>
   <label className="search-box"><Search size={19}/><input type="search" list="catalog-product-suggestions" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar carne, corte ou produto..." autoComplete="off"/><datalist id="catalog-product-suggestions">{catalogProducts.filter(p=>p.available).map(p=><option key={p.id} value={p.name}/>)}</datalist></label>
   <nav className="categories">{categories.map(c=><button key={c} className={category===c?"active":""} onClick={()=>setCategory(c)}>{c}</button>)}</nav>
   <div className="product-grid">{visible.map(p=>{const selected=cart.find(item=>item.id===p.id);const step=p.unit==="kg"?0.5:1;return <article className="product-card" key={p.id}><div className="product-art"><img src={productImage(p)} alt={"Imagem ilustrativa de "+p.name}/><span>{p.category}</span></div><div className="product-info"><span className="product-category">{p.category}</span><h3>{p.name}</h3><p>{p.note}</p><div className="product-bottom"><strong>{money(priceOf(p))} <small>/{p.unit}</small></strong>{selected?<div className="qty catalog-qty"><button aria-label={"Diminuir "+p.name} onClick={()=>qty(p.id,-step)}><Minus size={15}/></button><b>{selected.qty.toLocaleString("pt-BR")} {p.unit}</b><button aria-label={"Aumentar "+p.name} onClick={()=>qty(p.id,step)}><Plus size={15}/></button></div>:<button aria-label={"Adicionar "+p.name} onClick={()=>add(p)}><Plus size={18}/></button>}</div></div></article>})}</div>
-  <p className="price-note">{catalogLoaded&&products.some(p=>typeof p.id==="string")?"Catálogo atualizado pela loja. Preços e disponibilidade podem mudar sem aviso.":"Catálogo de demonstração: os itens ainda não foram cadastrados no banco oficial."}</p></section></main><footer className="store-footer"><div className="footer-brand"><strong>Açougue Bom Jardim</strong><span>Casa de Carnes Bom Jardim Ltda.</span><small>Qualidade e confiança em Linhares.</small></div><div className="footer-contact"><b>CONTATO E LOCALIZAÇÃO</b><a href="https://www.google.com/maps/search/?api=1&query=Rua+Luiz+Favero+276+Loja+101+Linhares+Juiz+de+Fora+MG+36060-380" target="_blank" rel="noreferrer"><MapPin size={15}/> Rua Luiz Fávero, 276, Loja 101 · Linhares · Juiz de Fora/MG · CEP 36060-380</a><a href="https://wa.me/553232119262" target="_blank" rel="noreferrer">WhatsApp: (32) 3211-9262</a><a href="https://www.instagram.com/acougue.bomjardimjf/" target="_blank" rel="noreferrer">Instagram: @acougue.bomjardimjf</a></div><div className="footer-hours"><b>HORÁRIO INFORMADO</b><span>Segunda a sábado: 09h às 20h</span><span>Domingos e feriados: 09h às 14h</span><small>Horários sujeitos a confirmação pela loja.</small></div></footer></>:!session?<main className="admin-layout"><section className="admin-content"><div className="admin-card settings-card" style={{maxWidth:460,margin:"50px auto",padding:28}}><span className="brand-mark"><LockKeyhole/></span><h2 style={{marginTop:16}}>Acesso da equipe</h2><p>Entre com o e-mail e a senha cadastrados pelo responsável da loja.</p>{notice&&<div className="notice">{notice}</div>}<label>E-mail<input type="email" autoComplete="username" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} placeholder="E-mail de acesso"/></label><label>Senha<input type="password" autoComplete="current-password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} placeholder="Sua senha"/></label><button className="primary-action" style={{width:"100%",marginTop:16}} onClick={signIn} disabled={authLoading}>{authLoading?"Verificando...":"Entrar no painel"}</button><button className="secondary-action" style={{width:"100%",marginTop:8}} onClick={()=>setArea("store")}>Voltar ao cardápio</button><div className="tip-box">O acesso é validado pelo Supabase. Não compartilhe sua senha por mensagem.</div></div></section></main>:<main className="admin-layout">
+  <p className="price-note">{catalogLoaded&&products.some(p=>typeof p.id==="string")?"Catálogo atualizado pela loja. Preços e disponibilidade podem mudar sem aviso.":"Catálogo de demonstração: os itens ainda não foram cadastrados no banco oficial."}</p></section></main><footer className="store-footer"><div className="footer-brand"><strong>Açougue Bom Jardim</strong><span>Casa de Carnes Bom Jardim Ltda.</span><small>Qualidade e confiança em Linhares.</small></div><div className="footer-contact"><b>CONTATO E LOCALIZAÇÃO</b><a href="https://www.google.com/maps/search/?api=1&query=Rua+Luiz+Favero+276+Loja+101+Linhares+Juiz+de+Fora+MG+36060-380" target="_blank" rel="noreferrer"><MapPin size={15}/> Rua Luiz Fávero, 276, Loja 101 · Linhares · Juiz de Fora/MG · CEP 36060-380</a><a href="https://wa.me/553232119262" target="_blank" rel="noreferrer">WhatsApp: (32) 3211-9262</a><a href="https://www.instagram.com/acougue.bomjardimjf/" target="_blank" rel="noreferrer">Instagram: @acougue.bomjardimjf</a></div><div className="footer-hours"><b>HORÁRIO INFORMADO</b><span>Segunda a sábado: 09h às 20h</span><span>Domingos e feriados: 09h às 14h</span><small>Horários sujeitos à confirmação pela loja.</small></div></footer></>:!session?<main className="admin-layout"><section className="admin-content"><div className="admin-card settings-card" style={{maxWidth:460,margin:"50px auto",padding:28}}><span className="brand-mark"><LockKeyhole/></span><h2 style={{marginTop:16}}>Acesso da equipe</h2><p>Entre com o e-mail e a senha cadastrados pelo responsável da loja.</p>{notice&&<div className="notice">{notice}</div>}<label>E-mail<input type="email" autoComplete="username" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} placeholder="E-mail de acesso"/></label><label>Senha<input type="password" autoComplete="current-password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} placeholder="Sua senha"/></label><button className="primary-action" style={{width:"100%",marginTop:16}} onClick={signIn} disabled={authLoading}>{authLoading?"Verificando...":"Entrar no painel"}</button><button className="secondary-action" style={{width:"100%",marginTop:8}} onClick={()=>setArea("store")}>Voltar ao cardápio</button><div className="tip-box">O acesso é validado pelo Supabase. Não compartilhe sua senha por mensagem.</div></div></section></main>:<main className="admin-layout">
    <aside className="admin-sidebar"><div className="admin-title"><span className="brand-mark"><Beef/></span><div><b>Painel da loja</b><small>Açougue Bom Jardim</small></div></div>
     {[["overview","Visão geral",LayoutDashboard],["products","Produtos",Package],["orders","Pedidos",ClipboardList],["delivery","Entrega",Truck],["settings","Configurações",Settings]].map(([id,label,Icon])=><button key={id} className={adminTab===id?"selected":""} onClick={()=>{setAdminTab(id);setEditing(null)}}><Icon size={18}/>{label}{id==="orders"&&orders.length>0&&<b className="nav-count">{orders.length}</b>}</button>)}
     <button className="back-store" onClick={signOut}><LogOut size={17}/> Sair do painel</button>
