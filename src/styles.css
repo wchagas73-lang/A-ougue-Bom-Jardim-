@@ -288,3 +288,40 @@ td{border-color:var(--line)}
 
 /* Promoção: selo discreto, sem a bolha bege/laranja no desenho do produto. */
 .product-card-promo .product-art i{background:transparent;color:#fff8e8;border:0;border-radius:0;padding:0;box-shadow:none;font-style:normal;font-weight:800;text-shadow:0 1px 4px #17291f99;}
+
+
+/* Consulta de pedidos e visualização completa */
+.order-search-box{display:flex;align-items:center;gap:10px;margin:16px 0 12px;padding:0 13px;min-height:46px;border:1px solid #ded7ca;border-radius:10px;background:#fffefa;color:#718071}
+.order-search-box input{flex:1;min-width:0;border:0!important;outline:none!important;background:transparent!important;padding:12px 0!important;color:var(--ink);font:13px 'DM Sans',sans-serif}
+.order-search-box button{display:grid;place-items:center;border:0;background:transparent;color:#718071;padding:7px;cursor:pointer}
+.order-detail-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0;border:1px solid #dfe7dc;border-radius:8px;background:#f7faf5;color:#244631;padding:8px 10px;font:600 11px 'DM Sans',sans-serif;cursor:pointer}
+.order-detail-button:hover{background:#eaf2e7}
+.order-detail-overlay{z-index:120}
+.order-detail-panel{width:min(620px,100%);max-height:92vh;overflow:auto;background:#fffefa;border-radius:16px;padding:20px;box-shadow:0 20px 70px #0004}
+.order-detail-content{padding-top:12px}
+.order-detail-content h3{margin:20px 0 10px;color:#244631;font-size:14px}
+.order-detail-content p{margin:7px 0;color:#58665a;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.order-detail-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;background:#f4f7f1;border-radius:10px}
+.order-detail-summary>b{font-size:19px;color:#244631}
+.order-detail-item{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #edf0e9;font-size:12px;color:#4c5d4d}
+.order-detail-item b{white-space:nowrap;color:#244631}
+.order-detail-totals{margin-top:10px;padding:10px 12px;background:#f7f9f6;border-radius:9px}
+.order-detail-totals p{display:flex;justify-content:space-between;gap:12px;margin:7px 0}
+.order-detail-grand-total{padding-top:8px;border-top:1px solid #dfe7dc;font-size:14px!important;font-weight:700;color:#244631!important}
+.order-detail-timeline{margin:8px 0 4px 5px;padding-left:17px;border-left:2px solid #dce7d8}
+.order-detail-event{position:relative;display:flex;gap:10px;padding:0 0 16px}
+.order-detail-event:last-child{padding-bottom:2px}
+.timeline-dot{position:absolute;left:-23px;top:3px;width:10px;height:10px;border-radius:50%;background:#4b7a50;border:2px solid #fff;box-shadow:0 0 0 1px #b9cfb5}
+.order-detail-event b,.order-detail-event time,.order-detail-event small{display:block}
+.order-detail-event b{font-size:12px;color:#314b35}
+.order-detail-event time{margin-top:3px;font-size:10px;color:#839083}
+.order-detail-event small{margin-top:3px;font-size:10px;color:#839083}
+@media(max-width:520px){
+ .order-search-box{align-items:center}
+ .order-search-box input{font-size:12px}
+ .order-top{flex-wrap:wrap}
+ .order-detail-button{margin-left:auto}
+ .order-detail-panel{max-height:94vh;padding:15px;border-radius:13px}
+ .order-detail-summary>b{font-size:17px}
+ .order-detail-item{font-size:11px}
+}
