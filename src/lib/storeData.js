@@ -175,12 +175,13 @@ export async function loadAdminOrders(storeId) {
   if (!supabase || !storeId) throw new Error("Sessão da loja não encontrada.");
   const { data, error } = await supabase
     .from("orders")
-    .select("id,order_number,customer_name,customer_phone,delivery_address,payment_method,status,subtotal,delivery_fee,total,customer_notes,created_at,order_items(id,product_name,quantity,unit,unit_price,line_total)")
+    .select("id,order_number,customer_name,customer_phone,delivery_address,payment_method,status,subtotal,delivery_fee,total,customer_notes,created_at,order_items(id,product_name,quantity,unit,unit_price,line_total),order_events(id,event_type,old_value,new_value,note,created_at)")
     .eq("store_id", storeId)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data || []).map((o) => ({
     id: o.id,
+    orderNumber: o.order_number,
     displayId: "BJ-" + o.order_number,
     customer: { name: o.customer_name, phone: o.customer_phone, address: o.delivery_address, notes: o.customer_notes || "" },
     items: (o.order_items || []).map((i) => ({
@@ -193,6 +194,12 @@ export async function loadAdminOrders(storeId) {
     payment: ({ pix: "Pix", cash: "Dinheiro", debit: "Cartão de débito", credit: "Cartão de crédito" })[o.payment_method] || o.payment_method,
     status: statusFromDb[o.status] || "Novo",
     createdAt: o.created_at,
+    statusHistory: (o.order_events || []).map(event => ({
+      id: event.id,
+      status: statusFromDb[event.new_value] || event.new_value || (event.event_type === "order_created" ? "Novo" : "Atualização"),
+      at: event.created_at,
+      note: event.note || "",
+    })).sort((a,b) => new Date(a.at) - new Date(b.at)),
   }));
 }
 
