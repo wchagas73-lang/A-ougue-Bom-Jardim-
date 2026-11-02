@@ -49,5 +49,11 @@ where not exists (
   select 1 from public.order_events e where e.order_id = o.id
 );
 
--- A tabela já possui RLS e política de leitura/inserção para membros da loja.
--- Não são criadas políticas de UPDATE ou DELETE: eventos antigos não podem ser editados pelo painel.
+-- Somente leitura direta pelo painel. Novos eventos são criados exclusivamente
+-- pelos triggers SECURITY DEFINER acima, não por chamadas arbitrárias do navegador.
+drop policy if exists "operational roles add events" on public.order_events;
+revoke insert, update, delete on public.order_events from anon, authenticated;
+grant select on public.order_events to authenticated;
+
+comment on table public.order_events is
+  'Histórico append-only de criação e mudanças de status dos pedidos. Eventos são gravados por triggers; o painel só pode consultar.';
