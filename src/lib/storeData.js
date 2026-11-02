@@ -57,20 +57,17 @@ export async function loadAdminCatalog(storeId) {
 }
 
 
-export async function loadPublicPromotions(storeId) {
-  if (!supabase || !storeId) return [];
-  const now = new Date().toISOString();
-  const { data, error } = await supabase.from("promotions")
-    .select("id,product_id,old_price,promotional_price,title,description,icon,starts_at,ends_at,active")
-    .eq("store_id", storeId).eq("active", true)
-    .or(`starts_at.is.null,starts_at.lte.${now}`)
-    .or(`ends_at.is.null,ends_at.gte.${now}`);
+export async function loadPublicPromotions() {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from("public_active_promotions")
+    .select("promotion_id,product_id,product_name,product_unit,old_price,promotional_price,title,description,icon")
+    .eq("store_slug", STORE_SLUG);
   if (error) throw error;
   return (data || []).map(p => ({
-    id:p.id, productId:p.product_id, oldPrice:Number(p.old_price),
+    id:p.promotion_id, productId:p.product_id, productName:p.product_name,
+    unit:p.product_unit, oldPrice:Number(p.old_price),
     promotionalPrice:Number(p.promotional_price), title:p.title || "Oferta especial",
-    description:p.description || "", icon:p.icon || "🔥",
-    startsAt:p.starts_at, endsAt:p.ends_at
+    description:p.description || "", icon:p.icon || "🔥"
   }));
 }
 
