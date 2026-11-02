@@ -103,8 +103,17 @@ export default function App(){
    }});
    if(error)throw error;
    if(!data?.success)throw new Error(data?.error||"Não foi possível registrar o pedido.");
-   const orderLines=cart.map(p=>"- "+p.name+": "+p.qty+" "+p.unit+" = "+money(p.price*p.qty)).join("\n");
-   const whatsappMessage="NOVO PEDIDO - AÇOUGUE BOM JARDIM\nPedido #"+data.order_number+"\n\nCliente: "+customer.name+"\nTelefone: "+customer.phone+"\nEndereço: "+customer.address+"\nPagamento: "+customer.payment+(customer.change?"\nTroco para: "+customer.change:"")+(customer.notes?"\nObservações: "+customer.notes:"")+"\n\nITENS\n"+orderLines+"\n\nTotal: "+money(data.total);
+   const orderItems=Array.isArray(data.items)&&data.items.length?data.items:cart.map(p=>({product_name:p.name,quantity:p.qty,unit:p.unit,unit_price:p.price,line_total:p.price*p.qty}));
+   const orderLines=orderItems.map(item=>"• "+item.product_name+"\\n  "+item.quantity+" "+item.unit+" × "+money(item.unit_price)+"/"+item.unit+" = "+money(item.line_total)).join("\\n\\n");
+   const receivedAt=new Date().toLocaleString("pt-BR");
+   const whatsappMessage="🥩 AÇOUGUE BOM JARDIM\\n"+
+    "📦 NOVO PEDIDO #"+data.order_number+"\\n"+
+    "🕒 Recebido em: "+receivedAt+"\\n\\n"+
+    "👤 CLIENTE\\n"+customer.name+"\\n📞 "+customer.phone+"\\n📍 "+customer.address+"\\n\\n"+
+    "🛒 PRODUTOS\\n"+orderLines+"\\n\\n"+
+    "💰 RESUMO DO PEDIDO\\nProdutos: "+money(data.subtotal)+"\\n🛵 Entrega: "+money(data.delivery_fee)+"\\n💵 TOTAL: "+money(data.total)+"\\n\\n"+
+    "💳 Pagamento: "+customer.payment+(customer.change?"\\n💸 Troco para: "+customer.change:"")+
+    (customer.notes?"\\n📝 Observações: "+customer.notes:"")+"\\n\\n❤️ Obrigado pela preferência!";
    window.location.href="https://wa.me/"+STORE_WHATSAPP+"?text="+encodeURIComponent(whatsappMessage);
    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});
    setNotice("Pedido #"+data.order_number+" registrado com sucesso. Abrindo o WhatsApp da loja...");
