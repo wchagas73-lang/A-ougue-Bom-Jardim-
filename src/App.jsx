@@ -205,7 +205,7 @@ export default function App(){
  async function handleSavePromotions(){
   if(savingPromo)return;
   setSavingPromo(true);
-  setNotice("Preparando o lote de promoções...");
+  setNotice("Conferindo os produtos selecionados...");
   try{
    if(!profile?.store_id)throw new Error("Sua sessão expirou. Entre novamente no painel.");
    if(profile.role!=="owner")throw new Error("Somente o proprietário pode cadastrar promoções.");
@@ -235,15 +235,22 @@ export default function App(){
     if(raw===""||!Number.isFinite(price)||price<0||Number(product.price)<=0||price>Number(product.price))throw new Error("Preço promocional inválido para "+selected.name+". Confira o valor.");
     prepared.push({productId:product.id,productName:product.name,oldPrice:product.price,promotionalPrice:price,title:promoDraft.title.trim(),description:"",icon:selection.icon||"🔥",startsAt:promoDraft.startsAt,endsAt:promoDraft.endsAt,active:true});
    }
-   setNotice("Salvando "+prepared.length+" promoção(ões) juntas no banco...");
+   setNotice("Enviando "+prepared.length+" promoção(ões) para o banco...");
    const saved=await saveAdminPromotions(prepared,profile.store_id);
+   // Exibe imediatamente o retorno confirmado pelo INSERT; as consultas de atualização ficam separadas.
+   setAdminPromos(old=>[...saved,...old.filter(previous=>!saved.some(item=>String(item.id)===String(previous.id)))]);
    const savedIds=new Set(chosen.map(p=>String(p.id)));
-   setPromoSelections(old=>Object.fromEntries(Object.entries(old).filter(([id,value])=>value.selected&&!savedIds.has(String(id)))));
-   const [freshCatalog,freshAdmin,freshPublic]=await Promise.all([loadAdminCatalog(profile.store_id),loadAdminPromotions(profile.store_id),loadPublicPromotions()]);
-   setProducts(old=>[...freshCatalog,...old.filter(p=>!freshCatalog.some(f=>String(f.id)===String(p.id)))]);
-   setAdminPromos(freshAdmin);
-   setPromos(freshPublic);
-   setNotice("Pronto! "+saved.length+" promoção(ões) salvas. Selecione outro grupo e outro período quando quiser; as anteriores foram preservadas.");
+   setPromoSelections(old=>Object.fromEntries(Object.entries(old).filter(([id,value])=>!(value.selected&&savedIds.has(String(id))))));
+   setNotice("Salvamento confirmado: "+saved.length+" promoção(ões) gravadas. Atualizando o catálogo...");
+   try{
+    const [freshCatalog,freshAdmin,freshPublic]=await Promise.all([loadAdminCatalog(profile.store_id),loadAdminPromotions(profile.store_id),loadPublicPromotions()]);
+    setProducts(old=>[...freshCatalog,...old.filter(p=>!freshCatalog.some(f=>String(f.id)===String(p.id)))]);
+    setAdminPromos(freshAdmin);
+    setPromos(freshPublic);
+    setNotice("Pronto! "+saved.length+" promoção(ões) salvas e exibidas no histórico. As promoções anteriores foram preservadas.");
+   }catch(refreshError){
+    setNotice("As "+saved.length+" promoção(ões) foram gravadas e já aparecem no histórico. A atualização da vitrine ficou pendente: "+(refreshError?.message||"falha ao atualizar consultas."));
+   }
   }catch(error){
    setNotice("Não foi possível salvar as promoções: "+(error?.message||"erro inesperado. Tente novamente."));
   }finally{setSavingPromo(false)}
