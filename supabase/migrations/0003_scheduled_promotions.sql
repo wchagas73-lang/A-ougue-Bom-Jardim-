@@ -18,3 +18,29 @@ create index if not exists promotions_store_schedule_idx
 
 -- A tabela permanece protegida por RLS: apenas membros autenticados da própria loja
 -- podem consultar a agenda; somente owner pode criar, alterar ou excluir.
+
+-- Vitrine pública: somente promoções vigentes e campos necessários ao catálogo.
+-- A agenda completa continua protegida pela RLS da tabela promotions.
+create or replace view public.public_active_promotions
+with (security_barrier = true) as
+select
+  s.slug as store_slug,
+  p.id as promotion_id,
+  p.product_id,
+  pr.name as product_name,
+  pr.unit as product_unit,
+  p.old_price,
+  p.promotional_price,
+  p.title,
+  p.description,
+  p.icon
+from public.promotions p
+join public.stores s on s.id = p.store_id
+join public.products pr on pr.id = p.product_id and pr.store_id = p.store_id
+where p.active = true
+  and pr.active = true
+  and pr.available = true
+  and (p.starts_at is null or p.starts_at <= now())
+  and (p.ends_at is null or p.ends_at >= now());
+
+grant select on public.public_active_promotions to anon, authenticated;
