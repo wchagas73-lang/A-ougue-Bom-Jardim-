@@ -179,39 +179,70 @@ export default function App(){
  async function updateStatus(id,status){try{if(!String(id).startsWith("DEMO-"))await updateAdminOrderStatus(id,status);const changedAt=new Date().toISOString();setOrders(old=>{const next=old.map(o=>o.id===id?{...o,status,statusHistory:[...(o.statusHistory||[{status:o.status,at:o.createdAt}]),{status,at:changedAt}]}:o);localStorage.setItem("bomjardim_orders",JSON.stringify(next));return next});setNotice("Status atualizado. Horário registrado no histórico desta demonstração.")}catch(error){setNotice("Não foi possível atualizar o pedido: "+(error.message||"erro de conexão."))}}
  async function handleSavePromotions(){
   if(savingPromo)return;
-  const chosen=[...adminCatalogProducts,...initialProducts.filter(d=>!adminCatalogProducts.some(p=>p.name.toLowerCase()===d.name.toLowerCase()))].filter(p=>promoSelections[p.id]?.selected);
+  const allProducts=[...adminCatalogProducts,...initialProducts.filter(d=>!adminCatalogProducts.some(p=>p.name.trim().toLowerCase()===d.name.trim().toLowerCase()))];
+  const chosen=allProducts.filter(p=>promoSelections[p.id]?.selected);
   if(!profile?.store_id){setNotice("Sua sessão expirou. Entre novamente no painel.");return}
   if(!chosen.length){setNotice("Selecione pelo menos um produto no catálogo.");return}
   if(!promoDraft.title.trim()){setNotice("Informe o título da promoção.");return}
-  if(chosen.some(p=>promoSelections[p.id].price===""||!Number.isFinite(Number(promoSelections[p.id].price))||Number(promoSelections[p.id].price)<0||Number(promoSelections[p.id].price)>Number(p.price))){setNotice("Confira os preços promocionais dos produtos selecionados.");return}
-  if(promoDraft.startsAt&&promoDraft.endsAt&&new Date(promoDraft.endsAt)<=new Date(promoDraft.startsAt)){setNotice("O término precisa ser depois do início.");return}
-  setSavingPromo(true);setNotice("Salvando produtos e promoção...");
+  if(!promoDraft.startsAt||!promoDraft.endsAt){setNotice("Informe a data e o horário de início e de término da promoção.");return}
+  const startsAt=new Date(promoDraft.startsAt),endsAt=new Date(promoDraft.endsAt);
+  if(!Number.isFinite(startsAt.getTime())||!Number.isFinite(endsAt.getTime())||endsAt<=startsAt){setNotice("Confira as datas: o término precisa ser posterior ao início.");return}
+  const invalid=chosen.find(p=>{
+   const raw=String(promoSelections[p.id]?.price??"").trim().replace(",",".");
+   const price=Number(raw);
+   return raw===""||!Number.isFinite(price)||price<0||Number(p.price)<=0||price>Number(p.price);
+  });
+  if(invalid){setNotice("Confira o preço promocional de "+invalid.name+". Ele precisa ser válido e não pode ultrapassar o preço normal de "+money(invalid.price)+".");return}
+  setSavingPromo(true);setNotice("Salvando "+chosen.length+" produto(s). Não feche esta tela...");
+  const successfulIds=[];
+  const failures=[];
   try{
-   const savedProducts=[];
-   const savedPromos=[];
+   let currentCatalog=await loadAdminCatalog(profile.store_id);
+   let currentPromos=await loadAdminPromotions(profile.store_id);
    for(const selected of chosen){
-    // Itens ilustrativos também viram produtos de demonstração reais no banco,
-    // para que a promoção apareça no cardápio público.
-    const product=typeof selected.id==="string"
-      ? selected
-      : await saveAdminProduct({...selected,imageUrl:selected.imageUrl||demoMeatImage(selected.category)},profile.store_id);
-    savedProducts.push(product);
-    const existing=adminPromos.find(p=>String(p.productId)===String(product.id));
-    savedPromos.push(await saveAdminPromotion({id:existing?.id,productId:product.id,title:promoDraft.title,description:"",icon:promoSelections[selected.id]?.icon||"🔥",promotionalPrice:promoSelections[selected.id].price,oldPrice:product.price,startsAt:promoDraft.startsAt,endsAt:promoDraft.endsAt,active:promoDraft.active},profile.store_id));
+    try{
+     const nameKey=selected.name.trim().toLowerCase();
+     let product=(typeof selected.id==="string"&&/^[0-9a-f-]{36}$/i.test(selected.id))
+       ? selected
+       : currentCatalog.find(p=>p.name.trim().toLowerCase()===nameKey);
+     if(!product){
+      product=await saveAdminProduct({...selected,imageUrl:selected.imageUrl||demoMeatImage(selected.category)},profile.store_id);
+      currentCatalog=[...currentCatalog.filter(p=>p.name.trim().toLowerCase()!==nameKey),product];
+      setProducts(old=>[...old.filter(p=>p.name.trim().toLowerCase()!==nameKey),product]);
+     }
+     const existing=currentPromos.find(p=>String(p.productId)===String(product.id));
+     const saved=await saveAdminPromotion({
+      id:existing?.id,productId:product.id,title:promoDraft.title.trim(),description:"",
+      icon:promoSelections[selected.id]?.icon||"🔥",
+      promotionalPrice:String(promoSelections[selected.id].price).trim().replace(",","."),
+      oldPrice:product.price,startsAt:promoDraft.startsAt,endsAt:promoDraft.endsAt,active:true
+     },profile.store_id);
+     currentPromos=[...currentPromos.filter(p=>String(p.productId)!==String(product.id)),saved];
+     successfulIds.push(selected.id);
+    }catch(error){
+     failures.push(selected.name+": "+(error?.message||"erro ao salvar este item"));
+    }
    }
-   const [freshCatalog,freshAdmin,freshPublic]=await Promise.all([loadAdminCatalog(profile.store_id),loadAdminPromotions(profile.store_id),loadPublicPromotions()]);
-   setProducts(freshCatalog);setAdminPromos(freshAdmin);setPromos(freshPublic);setPromoSelections({});
-   setNotice("Promoção salva! "+savedPromos.length+" produto(s) publicados no cardápio do cliente.");
-  }catch(error){setNotice("Não foi possível salvar a promoção: "+(error?.message||"erro inesperado no banco."));}
-  finally{setSavingPromo(false);}
+   setAdminPromos(currentPromos);
+   setPromoSelections(old=>Object.fromEntries(Object.entries(old).filter(([id,value])=>value.selected&&!successfulIds.some(savedId=>String(savedId)===String(id)))));
+   try{
+    const [freshCatalog,freshAdmin,freshPublic]=await Promise.all([loadAdminCatalog(profile.store_id),loadAdminPromotions(profile.store_id),loadPublicPromotions()]);
+    setProducts(old=>[...freshCatalog,...old.filter(p=>!freshCatalog.some(f=>f.name.trim().toLowerCase()===p.name.trim().toLowerCase())&& !successfulIds.some(id=>String(id)===String(p.id)))]);
+    setAdminPromos(freshAdmin);setPromos(freshPublic);
+   }catch(refreshError){
+    if(!failures.length)failures.push("Os itens foram gravados, mas a atualização da tela falhou. Atualize a página para conferir.");
+   }
+   if(failures.length){
+    setNotice(successfulIds.length+" de "+chosen.length+" produto(s) salvos. Os itens com problema continuam selecionados: "+failures.slice(0,4).join(" | ")+(failures.length>4?" | e mais "+(failures.length-4)+" item(ns).":""));
+   }else{
+    setNotice("Promoção salva e ativada! "+successfulIds.length+" produto(s) publicados com os preços e o período escolhidos.");
+   }
+  }catch(error){
+   setNotice("Não foi possível iniciar o salvamento: "+(error?.message||"verifique a conexão e as permissões do banco de dados."));
+  }finally{
+   setSavingPromo(false);
+  }
  }
- async function saveProduct(){
-  if(!editing?.name?.trim()||!editing?.category||editing.price===""||!Number.isFinite(Number(editing.price))||Number(editing.price)<0){setNotice("Preencha nome, categoria e preço válido.");return}
-  if(!profile?.store_id){setNotice("Entre novamente no painel para salvar produtos.");return}
-  try{const saved=await saveAdminProduct(editing,profile.store_id);setProducts(old=>editing.id?old.map(p=>p.id===editing.id?saved:p):[saved,...old]);setEditing(null);setNotice("Produto salvo no banco e publicado no catálogo online.");}
-  catch(error){setNotice("Falha ao salvar no banco: "+(error.message||"verifique se seu usuário é proprietário da loja."))}
- }
- async function deleteProduct(id){if(!confirm("Excluir este produto do catálogo para todos os clientes?"))return;try{await deleteAdminProduct(id,profile.store_id);setProducts(old=>old.filter(p=>p.id!==id));setNotice("Produto excluído do catálogo online.")}catch(error){setNotice("Não foi possível excluir: "+(error.message||"verifique as permissões."))}}
  function newProduct(){setEditing({name:"",category:"Boi",price:"",unit:"kg",note:"",available:true,featured:false})}
  return <div className="app-shell">
   <header className="topbar"><a className="brand" href="#" onClick={e=>{e.preventDefault();setArea("store")}}><span className="brand-mark"><Beef size={25}/></span><span><strong>Açougue Bom Jardim</strong><small>QUALIDADE E CONFIANÇA</small></span></a><div className="top-actions">{area==="store"?<><button className="admin-link" onClick={()=>{setArea("admin");setAdminTab("overview")}}> <LayoutDashboard size={16}/> Área da loja</button><button className="cart-button" onClick={()=>setCartOpen(true)}><ShoppingBag size={18}/> Meu pedido <b>{count}</b></button></>:<button className="admin-link" onClick={()=>setArea("store")}><ArrowLeft size={16}/> Ver cardápio</button>}</div></header>
