@@ -325,3 +325,10 @@ td{border-color:var(--line)}
  .order-detail-summary>b{font-size:17px}
  .order-detail-item{font-size:11px}
 }
+
+
+/* Vídeo de apresentação na página inicial: reproduz sem áudio e carrega progressivamente. */
+.home-video{width:min(1120px,calc(100% - 40px));margin:0 auto 28px;overflow:hidden;border-radius:18px;background:#10251a;box-shadow:0 12px 34px #14251b18}
+.home-video video{display:block;width:100%;max-height:520px;aspect-ratio:16/9;object-fit:cover;background:#10251a}
+.home-video[hidden]{display:none}
+@media(max-width:600px){.home-video{width:calc(100% - 28px);margin:0 auto 20px;border-radius:13px}.home-video video{aspect-ratio:9/16;max-height:430px;object-fit:contain}}
