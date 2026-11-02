@@ -205,3 +205,22 @@ td{border-color:var(--line)}
 .order-period-filter label{display:grid;gap:5px;min-width:150px;font-size:12px;font-weight:700;color:var(--forest)}
 .order-period-filter select,.order-period-filter input{padding:10px;border:1px solid #ded7ca;border-radius:8px;background:#fffefa;color:var(--ink);font:inherit}
 @media(max-width:520px){.promo-catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.promo-catalog-image{height:96px}.promo-catalog-info{padding:9px}.promo-catalog-info>strong{font-size:12px}.order-period-filter label{flex:1 1 100%}}
+
+
+/* Catálogo visual dentro do criador de promoções */
+.promo-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin:16px 0}
+.promo-product-card{overflow:hidden;border:1px solid #e5e7eb;border-radius:15px;background:#fff;cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .18s}
+.promo-product-card:hover{transform:translateY(-2px);box-shadow:0 7px 20px #00000012}
+.promo-product-card.selected{border:2px solid #c89b3c;box-shadow:0 0 0 3px #c89b3c24;background:#fffdf7}
+.promo-product-photo{height:135px;position:relative;background:#f3eee5}
+.promo-product-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.promo-product-photo>span{position:absolute;right:9px;top:9px;background:#fff;border-radius:30px;padding:7px;font-size:20px;box-shadow:0 2px 8px #0002}
+.promo-product-info{padding:11px;display:grid;gap:6px}
+.promo-product-info>b{font-size:15px;color:#242424}
+.promo-product-info>small{color:#777}
+.promo-product-controls{display:grid;grid-template-columns:54px 1fr;gap:8px;margin-top:5px}
+.promo-product-controls label{font-size:11px;color:#666;display:grid;gap:4px}
+.promo-product-controls select,.promo-product-controls input{width:100%;min-width:0;border:1px solid #d7d7d7;border-radius:8px;padding:8px;background:#fff;color:#222}
+.promo-product-controls input:disabled,.promo-product-controls select:disabled{background:#f1f1f1;opacity:.6}
+.promo-product-card.selected .promo-product-info>b{color:#8b641a}
+@media(max-width:520px){.promo-picker-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.promo-product-photo{height:105px}.promo-product-info{padding:8px}.promo-product-controls{grid-template-columns:48px 1fr;gap:5px}.promo-product-controls input,.promo-product-controls select{padding:7px 5px;font-size:12px}}
