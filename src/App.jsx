@@ -61,12 +61,29 @@ export default function App(){
  const revenue=delivered.reduce((s,o)=>s+o.total,0);
  function add(p){if(delivery.paused){setNotice("A loja pausou temporariamente o recebimento de pedidos.");return}setCart(old=>{const x=old.find(i=>i.id===p.id);const step=p.unit==="kg"?0.5:1;return x?old.map(i=>i.id===p.id?{...i,qty:Math.round((i.qty+step)*1000)/1000}:i):[...old,{...p,qty:p.unit==="kg"?0.5:1}]})}
  function qty(id,d){setCart(old=>old.map(p=>p.id===id?{...p,qty:Math.max(0,Math.round((p.qty+d)*1000)/1000)}:p).filter(p=>p.qty>0))}
- function finishOrder(){
+ async function finishOrder(){
   if(delivery.paused){setNotice("A loja pausou temporariamente o recebimento de pedidos.");return}
   if(!customer.name.trim()||!customer.phone.trim()||!customer.address.trim()||!cart.length){setNotice("Preencha nome, telefone, endereço e adicione pelo menos um produto.");return}
-  const order={id:"BJ-"+String(Date.now()).slice(-6),customer:{...customer},items:cart.map(p=>({...p})),subtotal,fee,total,payment:customer.payment,status:"Novo",createdAt:new Date().toISOString()};
-  setOrders(old=>[order,...old]);setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});setNotice("Pedido demonstrativo registrado! Ele já aparece no painel da loja.");
-  setArea("store");
+  if(!supabase||!catalogLoaded||!cart.every(p=>typeof p.id==="string")){setNotice("O catálogo oficial ainda não está disponível para pedidos online. Aguarde a loja cadastrar os produtos no banco.");return}
+  const paymentMap={"Pix":"pix","Dinheiro":"cash","Cartão de débito":"debit","Cartão de crédito":"credit"};
+  setDataLoading(true);
+  try{
+   const {data,error}=await supabase.functions.invoke("create-order",{body:{
+    store_slug:"acougue-bom-jardim",
+    customer_name:customer.name.trim(),
+    customer_phone:customer.phone,
+    delivery_address:customer.address.trim(),
+    payment_method:paymentMap[customer.payment],
+    customer_notes:[customer.change?("Troco para: "+customer.change):"",customer.notes].filter(Boolean).join(" | "),
+    items:cart.map(p=>({product_id:p.id,quantity:p.qty}))
+   }});
+   if(error)throw error;
+   if(!data?.success)throw new Error(data?.error||"Não foi possível registrar o pedido.");
+   setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});
+   setNotice("Pedido #"+data.order_number+" registrado com sucesso na loja. Total confirmado: "+money(data.total)+".");
+   setArea("store");
+  }catch(error){setNotice("Não foi possível enviar o pedido: "+(error.message||"tente novamente."));}
+  finally{setDataLoading(false)}
  }
  async function updateStatus(id,status){try{await updateAdminOrderStatus(id,status);setOrders(old=>old.map(o=>o.id===id?{...o,status}:o));setNotice("Status do pedido atualizado no banco.")}catch(error){setNotice("Não foi possível atualizar o pedido: "+(error.message||"erro de conexão."))}}
  async function saveProduct(){
@@ -107,6 +124,6 @@ export default function App(){
   {cartOpen&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setCartOpen(false)}}><aside className="cart-panel"><div className="panel-head"><div><span className="eyebrow">SEU PEDIDO</span><h2>Conferir sacola</h2></div><button className="icon-button" onClick={()=>setCartOpen(false)}><X/></button></div>
   {!cart.length?<div className="empty-cart"><ShoppingBag size={38}/><h3>Sua sacola está vazia</h3><p>Adicione produtos para montar seu pedido.</p></div>:<><div className="cart-items">{cart.map(p=><div className="cart-line" key={p.id}><div><b>{p.name}</b><small>{money(p.price)} / {p.unit}</small></div><div className="qty"><button onClick={()=>qty(p.id,-(p.unit==="kg"?0.5:1))}><Minus size={14}/></button><b>{p.qty.toLocaleString("pt-BR")}</b><button onClick={()=>qty(p.id,p.unit==="kg"?0.5:1)}><Plus size={14}/></button></div></div>)}</div>
   <div className="cart-total"><span>Subtotal estimado</span><strong>{money(subtotal)}</strong></div><div className="cart-total"><span>Entrega demonstrativa</span><strong>{delivery.mode==="manual"?"A combinar":money(fee)}</strong></div><div className="cart-total"><span>Total estimado</span><strong>{money(total)}</strong></div><div className="checkout-form"><h3>Dados para entrega</h3>
-  <input placeholder="Nome completo" value={customer.name} onChange={e=>setCustomer({...customer,name:e.target.value})}/><input placeholder="Telefone / WhatsApp" value={customer.phone} onChange={e=>setCustomer({...customer,phone:e.target.value})}/><textarea placeholder="Rua, número, bairro e referência" value={customer.address} onChange={e=>setCustomer({...customer,address:e.target.value})}/><select value={customer.payment} onChange={e=>setCustomer({...customer,payment:e.target.value})}><option>Pix</option><option>Dinheiro</option><option>Cartão de débito</option><option>Cartão de crédito</option></select>{customer.payment==="Dinheiro"&&<input placeholder="Troco para quanto? (opcional)" value={customer.change} onChange={e=>setCustomer({...customer,change:e.target.value})}/>}<textarea placeholder="Observações do pedido (opcional)" value={customer.notes} onChange={e=>setCustomer({...customer,notes:e.target.value})}/><button className="send-order" onClick={finishOrder}>Finalizar pedido demonstrativo</button><small className="disclaimer">Demonstração: o pedido fica salvo neste navegador e aparece no painel desta demonstração. Não é enviado à loja.</small></div></>}</aside></div>}
+  <input placeholder="Nome completo" value={customer.name} onChange={e=>setCustomer({...customer,name:e.target.value})}/><input placeholder="Telefone / WhatsApp" value={customer.phone} onChange={e=>setCustomer({...customer,phone:e.target.value})}/><textarea placeholder="Rua, número, bairro e referência" value={customer.address} onChange={e=>setCustomer({...customer,address:e.target.value})}/><select value={customer.payment} onChange={e=>setCustomer({...customer,payment:e.target.value})}><option>Pix</option><option>Dinheiro</option><option>Cartão de débito</option><option>Cartão de crédito</option></select>{customer.payment==="Dinheiro"&&<input placeholder="Troco para quanto? (opcional)" value={customer.change} onChange={e=>setCustomer({...customer,change:e.target.value})}/>}<textarea placeholder="Observações do pedido (opcional)" value={customer.notes} onChange={e=>setCustomer({...customer,notes:e.target.value})}/><button className="send-order" onClick={finishOrder} disabled={dataLoading}>{dataLoading?"Enviando pedido...":"Confirmar pedido"}</button><small className="disclaimer">O pedido será registrado no sistema da loja. A confirmação não significa pagamento aprovado.</small></div></>}</aside></div>}
   </div>
 }
