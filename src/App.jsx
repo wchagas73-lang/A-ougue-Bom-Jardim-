@@ -41,11 +41,36 @@ export default function App(){
  const [promos,setPromos]=useState(()=>load("bomjardim_promos",[{id:1,title:"Churrasco do fim de semana",description:"Monte seu kit e aproveite!",active:true}]));
  const [delivery,setDelivery]=useState(()=>load("bomjardim_delivery",{mode:"fixed",fee:7,freeOver:150,paused:false,estimatedTime:"40 a 60 minutos"}));
  const [category,setCategory]=useState("Todos"),[search,setSearch]=useState(""),[cart,setCart]=useState([]),[cartOpen,setCartOpen]=useState(false);
- const [customer,setCustomer]=useState({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});\n const addressInputRef=useRef(null);
+ const [customer,setCustomer]=useState({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});
+ const addressInputRef=useRef(null);
  const [area,setArea]=useState("store"),[adminTab,setAdminTab]=useState("overview"),[editing,setEditing]=useState(null),[notice,setNotice]=useState("");
  const [session,setSession]=useState(null),[profile,setProfile]=useState(null),[authLoading,setAuthLoading]=useState(false),[loginEmail,setLoginEmail]=useState(""),[loginPassword,setLoginPassword]=useState("");
  const [catalogLoaded,setCatalogLoaded]=useState(false),[storeInfo,setStoreInfo]=useState(null),[dataLoading,setDataLoading]=useState(false);
- useEffect(()=>{\n  if(!cartOpen||!addressInputRef.current)return;\n  const apiKey=import.meta.env.VITE_GOOGLE_MAPS_API_KEY;\n  if(!apiKey)return;\n  let cancelled=false,autocomplete=null,listener=null;\n  const setup=async()=>{\n   try{\n    if(!window.google?.maps?.importLibrary){\n     await new Promise((resolve,reject)=>{\n      const existing=document.querySelector('script[data-google-places]');\n      if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",reject,{once:true});return}\n      const script=document.createElement("script");script.dataset.googlePlaces="true";script.src="https://maps.googleapis.com/maps/api/js?key="+encodeURIComponent(apiKey)+"&libraries=places&language=pt-BR&region=BR";script.async=true;script.defer=true;script.onload=resolve;script.onerror=reject;document.head.appendChild(script);\n     });\n    }\n    if(cancelled||!addressInputRef.current)return;\n    const {Autocomplete}=await window.google.maps.importLibrary("places");\n    if(cancelled||!addressInputRef.current)return;\n    autocomplete=new Autocomplete(addressInputRef.current,{componentRestrictions:{country:"br"},fields:["formatted_address","address_components"],types:["address"]});\n    listener=autocomplete.addListener("place_changed",()=>{const place=autocomplete.getPlace();if(place?.formatted_address)setCustomer(current=>({...current,address:place.formatted_address}));});\n   }catch(error){console.warn("Não foi possível ativar as sugestões de endereço.",error)}\n  };\n  setup();\n  return()=>{cancelled=true;if(listener)listener.remove()};\n },[cartOpen]);\n useEffect(()=>{if(!supabase)return;let alive=true;supabase.auth.getSession().then(async({data})=>{if(!alive)return;const current=data.session;if(!current){setSession(null);return}const{data:member,error}=await supabase.from("profiles").select("store_id,role,active").eq("id",current.user.id).single();if(!alive)return;if(error||!member?.active||!["owner","employee"].includes(member.role)){await supabase.auth.signOut();setSession(null);setProfile(null);return}setSession(current);setProfile(member)});const{data:{subscription}}=supabase.auth.onAuthStateChange((_event,next)=>{if(!next){setSession(null);setProfile(null)}});return()=>{alive=false;subscription.unsubscribe()}},[]);
+ useEffect(()=>{
+  if(!cartOpen||!addressInputRef.current)return;
+  const apiKey=import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  if(!apiKey)return;
+  let cancelled=false,autocomplete=null,listener=null;
+  const setup=async()=>{
+   try{
+    if(!window.google?.maps?.importLibrary){
+     await new Promise((resolve,reject)=>{
+      const existing=document.querySelector('script[data-google-places]');
+      if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",reject,{once:true});return}
+      const script=document.createElement("script");script.dataset.googlePlaces="true";script.src="https://maps.googleapis.com/maps/api/js?key="+encodeURIComponent(apiKey)+"&libraries=places&language=pt-BR&region=BR";script.async=true;script.defer=true;script.onload=resolve;script.onerror=reject;document.head.appendChild(script);
+     });
+    }
+    if(cancelled||!addressInputRef.current)return;
+    const {Autocomplete}=await window.google.maps.importLibrary("places");
+    if(cancelled||!addressInputRef.current)return;
+    autocomplete=new Autocomplete(addressInputRef.current,{componentRestrictions:{country:"br"},fields:["formatted_address","address_components"],types:["address"]});
+    listener=autocomplete.addListener("place_changed",()=>{const place=autocomplete.getPlace();if(place?.formatted_address)setCustomer(current=>({...current,address:place.formatted_address}));});
+   }catch(error){console.warn("Não foi possível ativar as sugestões de endereço.",error)}
+  };
+  setup();
+  return()=>{cancelled=true;if(listener)listener.remove()};
+ },[cartOpen]);
+ useEffect(()=>{if(!supabase)return;let alive=true;supabase.auth.getSession().then(async({data})=>{if(!alive)return;const current=data.session;if(!current){setSession(null);return}const{data:member,error}=await supabase.from("profiles").select("store_id,role,active").eq("id",current.user.id).single();if(!alive)return;if(error||!member?.active||!["owner","employee"].includes(member.role)){await supabase.auth.signOut();setSession(null);setProfile(null);return}setSession(current);setProfile(member)});const{data:{subscription}}=supabase.auth.onAuthStateChange((_event,next)=>{if(!next){setSession(null);setProfile(null)}});return()=>{alive=false;subscription.unsubscribe()}},[]);
  async function signIn(){if(!supabase){setNotice("Conexão com o banco não configurada. Verifique as variáveis da Vercel.");return}if(!loginEmail.trim()||!loginPassword){setNotice("Informe e-mail e senha do responsável.");return}setAuthLoading(true);const{data,error}=await supabase.auth.signInWithPassword({email:loginEmail.trim(),password:loginPassword});if(error){setNotice("Não foi possível entrar. Confira o e-mail e a senha.");setAuthLoading(false);return}const{data:member,error:profileError}=await supabase.from("profiles").select("store_id,role,active").eq("id",data.user.id).single();if(profileError||!member?.active||!["owner","employee"].includes(member.role)){await supabase.auth.signOut();setNotice("Este usuário não tem permissão para acessar o painel desta loja.");setAuthLoading(false);return}setSession(data.session);setProfile(member);setLoginPassword("");setNotice("Acesso autorizado.");setAuthLoading(false)}
  async function signOut(){if(supabase)await supabase.auth.signOut();setSession(null);setProfile(null);setArea("store")}
  useEffect(()=>localStorage.setItem("bomjardim_products",JSON.stringify(products)),[products]);
