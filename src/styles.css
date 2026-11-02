@@ -163,3 +163,18 @@ td{border-color:var(--line)}
 .pac-container{z-index:10000!important;border:1px solid #e2dbcf;border-radius:9px;box-shadow:0 10px 28px #17291f20;font-family:'DM Sans',sans-serif;overflow:hidden}
 .pac-item{padding:9px 11px;font-size:12px;line-height:1.45;cursor:pointer}
 .pac-item:hover{background:#f2efe7}
+
+
+/* Seletor de vários produtos para a promoção do dia */
+.promo-picker{display:grid;gap:10px;margin:12px 0 18px}
+.promo-picker-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(130px,190px);gap:12px;align-items:center;padding:12px;border:1px solid var(--line,#e5e7eb);border-radius:12px;background:var(--surface,#fff)}
+.promo-product-check{display:flex;align-items:center;gap:10px;min-width:0}
+.promo-product-check input{width:18px;height:18px;flex:0 0 auto}
+.promo-product-check span{display:grid;gap:3px;min-width:0}
+.promo-product-check small{font-size:12px;opacity:.72}
+.promo-price-field{font-size:12px}
+.promo-price-field input{width:100%;margin-top:5px}
+.promo-price-field input:disabled{opacity:.45}
+.product-card-promo{border:2px solid #e7a52b;box-shadow:0 5px 18px rgba(180,120,20,.12)}
+.product-card-promo .product-art i{background:#fff0c2;color:#875600}
+@media(max-width:520px){.promo-picker-row{grid-template-columns:minmax(0,1fr) 118px;gap:8px;padding:9px}.promo-price-field{font-size:11px}.promo-product-check b{font-size:13px}}
