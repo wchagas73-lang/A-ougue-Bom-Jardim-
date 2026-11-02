@@ -86,14 +86,17 @@ Deno.serve(async (req) => {
 
     const productMap = new Map(products.map((p: any) => [p.id, p]));
     const now = new Date().toISOString();
-    const { data: activePromotions, error: promotionsError } = await db
+    const { data: promotionRows, error: promotionsError } = await db
       .from("promotions")
-      .select("product_id,promotional_price,title,icon")
-      .eq("store_id", store.id).eq("active", true)
-      .or(`starts_at.is.null,starts_at.lte.${now}`)
-      .or(`ends_at.is.null,ends_at.gte.${now}`);
+      .select("product_id,promotional_price,title,icon,starts_at,ends_at")
+      .eq("store_id", store.id).eq("active", true);
     if (promotionsError) return json({ error: "Não foi possível validar as promoções. Tente novamente." }, 500);
-    const promoMap = new Map((activePromotions || []).map((p: any) => [p.product_id, p]));
+    const currentTime = Date.now();
+    const activePromotions = (promotionRows || []).filter((p: any) =>
+      (!p.starts_at || new Date(p.starts_at).getTime() <= currentTime) &&
+      (!p.ends_at || new Date(p.ends_at).getTime() >= currentTime)
+    );
+    const promoMap = new Map(activePromotions.map((p: any) => [p.product_id, p]));
     const orderItems = cleanItems.map((item: any) => {
       const product: any = productMap.get(item.product_id);
       const promo: any = promoMap.get(product.id);
