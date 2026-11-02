@@ -103,7 +103,7 @@ export default function App(){
   }catch(error){setNotice("Não foi possível enviar o pedido: "+(error.message||"tente novamente."));}
   finally{setDataLoading(false)}
  }
- async function updateStatus(id,status){try{await updateAdminOrderStatus(id,status);const changedAt=new Date().toISOString();setOrders(old=>{const next=old.map(o=>o.id===id?{...o,status,statusHistory:[...(o.statusHistory||[{status:o.status,at:o.createdAt}]),{status,at:changedAt}]}:o);localStorage.setItem("bomjardim_orders",JSON.stringify(next));return next});setNotice("Status atualizado. Horário registrado no histórico desta demonstração.")}catch(error){setNotice("Não foi possível atualizar o pedido: "+(error.message||"erro de conexão."))}}
+ async function updateStatus(id,status){try{if(!String(id).startsWith("DEMO-"))await updateAdminOrderStatus(id,status);const changedAt=new Date().toISOString();setOrders(old=>{const next=old.map(o=>o.id===id?{...o,status,statusHistory:[...(o.statusHistory||[{status:o.status,at:o.createdAt}]),{status,at:changedAt}]}:o);localStorage.setItem("bomjardim_orders",JSON.stringify(next));return next});setNotice("Status atualizado. Horário registrado no histórico desta demonstração.")}catch(error){setNotice("Não foi possível atualizar o pedido: "+(error.message||"erro de conexão."))}}
  async function saveProduct(){
   if(!editing?.name?.trim()||!editing?.category||editing.price===""||!Number.isFinite(Number(editing.price))||Number(editing.price)<0){setNotice("Preencha nome, categoria e preço válido.");return}
   if(!profile?.store_id){setNotice("Entre novamente no painel para salvar produtos.");return}
