@@ -209,13 +209,15 @@ export default function App(){
   const allProducts=sourceProducts.filter((product,index,array)=>array.findIndex(item=>String(item.id)===String(product.id))===index);
   const chosen=allProducts.filter(p=>promoSelections[String(p.id)]?.selected);
   if(!profile?.store_id){setNotice("Sua sessão expirou. Entre novamente no painel.");return}
+  if(profile.role!=="owner"){setNotice("Somente o acesso do proprietário pode cadastrar ou alterar promoções. Entre com a conta proprietária da loja.");return}
   if(!chosen.length){setNotice("Selecione pelo menos um produto no catálogo.");return}
   if(!promoDraft.title.trim()){setNotice("Informe o título da promoção.");return}
   if(!promoDraft.startsAt||!promoDraft.endsAt){setNotice("Informe a data e o horário de início e de término da promoção.");return}
   const startsAt=new Date(promoDraft.startsAt),endsAt=new Date(promoDraft.endsAt);
   if(!Number.isFinite(startsAt.getTime())||!Number.isFinite(endsAt.getTime())||endsAt<=startsAt){setNotice("Confira as datas: o término precisa ser posterior ao início.");return}
+  const selectionFor=productId=>promoSelections[String(productId)]||{};
   const invalid=chosen.find(p=>{
-   const raw=String(promoSelections[p.id]?.price??"").trim().replace(",",".");
+   const raw=String(selectionFor(p.id).price??"").trim().replace(",",".");
    const price=Number(raw);
    return raw===""||!Number.isFinite(price)||price<0||Number(p.price)<=0||price>Number(p.price);
   });
@@ -241,8 +243,8 @@ export default function App(){
      const existing=currentPromos.find(p=>String(p.productId)===String(product.id));
      const saved=await saveAdminPromotion({
       id:existing?.id,productId:product.id,title:promoDraft.title.trim(),description:"",
-      icon:promoSelections[selected.id]?.icon||"🔥",
-      promotionalPrice:String(promoSelections[selected.id].price).trim().replace(",","."),
+      icon:selectionFor(selected.id).icon||"🔥",
+      promotionalPrice:String(selectionFor(selected.id).price).trim().replace(",","."),
       oldPrice:product.price,startsAt:promoDraft.startsAt,endsAt:promoDraft.endsAt,active:true
      },profile.store_id);
      currentPromos=[...currentPromos.filter(p=>String(p.productId)!==String(product.id)),saved];
