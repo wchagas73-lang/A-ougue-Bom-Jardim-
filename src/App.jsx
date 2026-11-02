@@ -50,17 +50,17 @@ export default function App(){
  const total=subtotal+fee;
  const delivered=orders.filter(o=>o.status==="Entregue");
  const revenue=delivered.reduce((s,o)=>s+o.total,0);
- function add(p){setCart(old=>{const x=old.find(i=>i.id===p.id);return x?old.map(i=>i.id===p.id?{...i,qty:Math.round((i.qty+0.5)*1000)/1000}:i):[...old,{...p,qty:p.unit==="kg"?0.5:1}]})}
+ function add(p){if(delivery.paused){setNotice("A loja pausou temporariamente o recebimento de pedidos.");return}setCart(old=>{const x=old.find(i=>i.id===p.id);const step=p.unit==="kg"?0.5:1;return x?old.map(i=>i.id===p.id?{...i,qty:Math.round((i.qty+step)*1000)/1000}:i):[...old,{...p,qty:p.unit==="kg"?0.5:1}]})}
  function qty(id,d){setCart(old=>old.map(p=>p.id===id?{...p,qty:Math.max(0,Math.round((p.qty+d)*1000)/1000)}:p).filter(p=>p.qty>0))}
  function finishOrder(){
-  if(!customer.name.trim()||!customer.phone.trim()||!customer.address.trim()||!cart.length){setNotice("Preencha nome, telefone, endereço e adicione pelo menos um produto.");return}
+  if(delivery.paused){setNotice("A loja pausou temporariamente o recebimento de pedidos.");return}\n  if(!customer.name.trim()||!customer.phone.trim()||!customer.address.trim()||!cart.length){setNotice("Preencha nome, telefone, endereço e adicione pelo menos um produto.");return}
   const order={id:"BJ-"+String(Date.now()).slice(-6),customer:{...customer},items:cart.map(p=>({...p})),subtotal,fee,total,payment:customer.payment,status:"Novo",createdAt:new Date().toISOString()};
   setOrders(old=>[order,...old]);setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});setNotice("Pedido demonstrativo registrado! Ele já aparece no painel da loja.");
   setArea("store");
  }
  function updateStatus(id,status){setOrders(old=>old.map(o=>o.id===id?{...o,status}:o))}
  function saveProduct(){
-  if(!editing?.name?.trim()||!editing?.category||Number(editing.price)<0){setNotice("Preencha nome, categoria e preço válido.");return}
+  if(!editing?.name?.trim()||!editing?.category||editing.price===""||!Number.isFinite(Number(editing.price))||Number(editing.price)<0){setNotice("Preencha nome, categoria e preço válido.");return}
   if(editing.id){setProducts(old=>old.map(p=>p.id===editing.id?{...editing,price:Number(editing.price)}:p))}
   else{setProducts(old=>[{...editing,id:Date.now(),price:Number(editing.price),available:true},...old])}
   setEditing(null);setNotice("Produto salvo neste navegador.");
@@ -69,7 +69,7 @@ export default function App(){
  function newProduct(){setEditing({name:"",category:"Boi",price:"",unit:"kg",note:"",available:true,featured:false})}
  return <div className="app-shell">
   <header className="topbar"><a className="brand" href="#" onClick={e=>{e.preventDefault();setArea("store")}}><span className="brand-mark"><Beef size={25}/></span><span><strong>Açougue Bom Jardim</strong><small>QUALIDADE E CONFIANÇA</small></span></a><div className="top-actions">{area==="store"?<><button className="admin-link" onClick={()=>{setArea("admin");setAdminTab("overview")}}> <LayoutDashboard size={16}/> Área da loja</button><button className="cart-button" onClick={()=>setCartOpen(true)}><ShoppingBag size={18}/> Meu pedido <b>{count}</b></button></>:<button className="admin-link" onClick={()=>setArea("store")}><ArrowLeft size={16}/> Ver cardápio</button>}</div></header>
-  {area==="store"?<><main><section className="hero"><div><span className="eyebrow">SEU AÇOUGUE DE CONFIANÇA</span><h1>Carne de qualidade,<br/><em>do seu jeito.</em></h1><p>Escolha seus cortes, monte seu pedido e receba em casa.</p><a className="hero-cta" href="#catalog">Ver produtos <span>→</span></a></div><div className="hero-stamp"><Beef size={48}/><span>FRESCO<br/>TODOS OS DIAS</span></div></section>
+  {area==="store"?<><main>{delivery.paused&&<div className="store-paused"><strong>Pedidos temporariamente pausados</strong><span>Estamos organizando a loja. Volte em breve!</span></div>}<section className="hero"><div><span className="eyebrow">SEU AÇOUGUE DE CONFIANÇA</span><h1>Carne de qualidade,<br/><em>do seu jeito.</em></h1><p>Escolha seus cortes, monte seu pedido e receba em casa.</p><a className="hero-cta" href="#catalog">Ver produtos <span>→</span></a></div><div className="hero-stamp"><Beef size={48}/><span>FRESCO<br/>TODOS OS DIAS</span></div></section>
   <section className="trust-row"><div><ShieldCheck/><span><b>Qualidade</b><small>Seleção de cortes</small></span></div><div><Clock3/><span><b>Praticidade</b><small>Peça pelo celular</small></span></div><div><MapPin/><span><b>Entrega</b><small>Consulte sua região</small></span></div></section>
   {promos.some(p=>p.active)&&<section className="promo-strip"><Tag size={20}/><div><b>{promos.find(p=>p.active)?.title}</b><span>{promos.find(p=>p.active)?.description}</span></div></section>}
   <section className="catalog" id="catalog"><div className="section-heading"><div><span className="eyebrow">NOSSO CATÁLOGO</span><h2>Escolha seus produtos</h2></div><span className="catalog-count">{visible.length} produtos</span></div>
