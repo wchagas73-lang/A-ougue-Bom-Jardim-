@@ -106,9 +106,7 @@ Deno.serve(async (req) => {
         quantity,
         unit: product.unit,
         unit_price: unitPrice,
-        line_total: Math.round(quantity * unitPrice * 100) / 100,
-        promotion_title: promo?.title || null,
-        regular_price: promo ? regularPrice : null
+        line_total: Math.round(quantity * unitPrice * 100) / 100
       };
     });
     const subtotal = Math.round(orderItems.reduce((sum: number, item: any) => sum + item.line_total, 0) * 100) / 100;
@@ -159,6 +157,7 @@ Deno.serve(async (req) => {
       subtotal,
       delivery_fee: deliveryFee,
       total,
+      items: orderItems,
     }, 201);
   } catch {
     return json({ error: "Não foi possível processar o pedido. Tente novamente." }, 400);
