@@ -66,6 +66,18 @@ export default function App(){
  async function finishOrder(){
   if(delivery.paused){setNotice("A loja pausou temporariamente o recebimento de pedidos.");return}
   if(!customer.name.trim()||!customer.phone.trim()||!customer.address.trim()||!cart.length){setNotice("Preencha nome, telefone, endereço e adicione pelo menos um produto.");return}
+  const isDemoOrder=cart.every(p=>typeof p.id==="number");
+  if(isDemoOrder){
+   const demoNumber=String(Date.now()).slice(-6);
+   const demoOrder={id:"DEMO-"+demoNumber,createdAt:new Date().toISOString(),customer:{...customer},items:cart.map(p=>({...p})),subtotal,fee,total,payment:customer.payment,status:"Novo"};
+   setOrders(old=>[demoOrder,...old]);
+   const orderLines=cart.map(p=>"- "+p.name+": "+p.qty+" "+p.unit+" = "+money(p.price*p.qty)).join("\n");
+   const whatsappMessage="PEDIDO DE DEMONSTRAÇÃO - AÇOUGUE BOM JARDIM\nPedido teste #"+demoNumber+"\n\nCliente: "+customer.name+"\nTelefone: "+customer.phone+"\nEndereço: "+customer.address+"\nPagamento: "+customer.payment+(customer.change?"\nTroco para: "+customer.change:"")+(customer.notes?"\nObservações: "+customer.notes:"")+"\n\nITENS\n"+orderLines+"\n\nSubtotal: "+money(subtotal)+"\nEntrega: "+money(fee)+"\nTotal: "+money(total)+"\n\nEste é um pedido fictício para demonstração.";
+   setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});
+   setNotice("Pedido de demonstração criado! Abrindo o WhatsApp da loja.");
+   window.location.href="https://wa.me/"+STORE_WHATSAPP+"?text="+encodeURIComponent(whatsappMessage);
+   return;
+  }
   if(!supabase||!catalogLoaded||!cart.every(p=>typeof p.id==="string")){setNotice("O catálogo oficial ainda não está disponível para pedidos online. Aguarde a loja cadastrar os produtos no banco.");return}
   const paymentMap={"Pix":"pix","Dinheiro":"cash","Cartão de débito":"debit","Cartão de crédito":"credit"};
   setDataLoading(true);
