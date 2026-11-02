@@ -133,3 +133,23 @@ td{border-color:var(--line)}
  .cart-panel{padding:20px}
 }
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
+
+
+/* Ajuste responsivo dos controles de quantidade no catálogo */
+.product-bottom{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.product-bottom>strong{min-width:0;flex:1 1 auto;white-space:nowrap}
+.product-bottom .catalog-qty{display:flex;align-items:center;justify-content:space-between;gap:clamp(3px,1vw,8px);flex:0 1 auto;min-width:0;max-width:100%;padding:3px 4px}
+.product-bottom .catalog-qty button{flex:0 0 29px;width:29px;height:29px;min-width:29px;padding:0}
+.product-bottom .catalog-qty b{display:block;flex:1 1 auto;min-width:0;text-align:center;white-space:nowrap;font-size:clamp(10px,1.1vw,12px);font-variant-numeric:tabular-nums}
+@media(max-width:700px){
+ .product-bottom{gap:8px}
+ .product-bottom>strong{flex:1 1 100%}
+ .product-bottom .catalog-qty{width:100%;max-width:100%;justify-content:space-between}
+ .product-bottom .catalog-qty b{font-size:12px}
+}
+@media(max-width:360px){
+ .product-info{padding:10px}
+ .product-bottom .catalog-qty{gap:3px}
+ .product-bottom .catalog-qty button{flex-basis:27px;width:27px;height:27px;min-width:27px}
+ .product-bottom .catalog-qty b{font-size:11px}
+}
