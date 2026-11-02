@@ -104,7 +104,11 @@ export async function saveAdminPromotion(promo, storeId) {
     ? supabase.from("promotions").update(payload).eq("id",promo.id).eq("store_id",storeId)
     : supabase.from("promotions").insert(payload);
   const {data,error}=await query.select("id").single();
-  if(error) throw error;
+  if(error) {
+    const detail=[error.message,error.details,error.hint,error.code].filter(Boolean).join(" | ");
+    throw new Error(detail || "O Supabase recusou a gravação da promoção.");
+  }
+  if(!data?.id) throw new Error("O banco não confirmou a gravação da promoção. Verifique as permissões da conta e a migração 0003.");
   return {...promo,id:data.id,oldPrice:productPrice,promotionalPrice:salePrice};
 }
 
