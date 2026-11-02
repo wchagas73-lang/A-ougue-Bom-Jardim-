@@ -113,6 +113,7 @@ export default function App(){
  useEffect(()=>localStorage.setItem("bomjardim_delivery",JSON.stringify(delivery)),[delivery]);
  useEffect(()=>{let alive=true;(async()=>{try{const result=await loadPublicCatalog();if(!alive)return;const officialProducts=result.products||[];const officialNames=new Set(officialProducts.map(p=>p.name.trim().toLowerCase()));const demoProducts=initialProducts.filter(p=>!officialNames.has(p.name.trim().toLowerCase()));setProducts([...officialProducts,...demoProducts]);if(result.store)setStoreInfo(result.store);setCatalogLoaded(true)}catch(error){if(alive){setProducts(initialProducts);setNotice("Não foi possível atualizar o catálogo online. Exibindo o catálogo fictício de demonstração.")}}try{const activePromos=await loadPublicPromotions();if(alive)setPromos(activePromos)}catch(error){if(alive)setNotice("Catálogo carregado. Para ativar promoções, execute a migração SQL 0003 no Supabase.")}})();return()=>{alive=false}},[]);
  useEffect(()=>{if(!session||!profile?.store_id)return;let alive=true;(async()=>{setDataLoading(true);try{const [dbProducts,dbOrders,dbPromos]=await Promise.all([loadAdminCatalog(profile.store_id),loadAdminOrders(profile.store_id),profile.role==="owner"?loadAdminPromotions(profile.store_id):Promise.resolve([])]);if(!alive)return;if(dbProducts.length)setProducts(dbProducts);setAdminPromos(dbPromos);const localDemoOrders=load("bomjardim_orders",[]).filter(o=>String(o.id).startsWith("DEMO-"));setOrders([...localDemoOrders,...dbOrders]);if(dbProducts.length===0)setNotice("Banco conectado. Cadastre o primeiro produto oficial da loja.");}catch(error){if(alive)setNotice("Erro ao carregar os dados da loja: "+(error.message||"verifique as permissões do Supabase."));}finally{if(alive)setDataLoading(false)}})();return()=>{alive=false}},[session,profile?.store_id]);
+  useEffect(()=>{if(adminTab!=="promos"||!session||!profile?.store_id)return;let alive=true;(async()=>{try{const fresh=await loadAdminCatalog(profile.store_id);if(alive&&fresh.length)setProducts(old=>[...fresh,...old.filter(p=>!fresh.some(x=>String(x.id)===String(p.id)))]);}catch(error){if(alive)setNotice("Não foi possível atualizar as fotos do catálogo de promoções: "+(error.message||"erro ao consultar produtos."));}})();return()=>{alive=false}},[adminTab,session,profile?.store_id]);
  const STORE_WHATSAPP="5532999953215";
  const estimatedTime=delivery.estimatedTime||"40 a 60 minutos";
  const catalogProducts=products.length?products:initialProducts;
@@ -219,6 +220,7 @@ export default function App(){
   const failures=[];
   try{
    let currentCatalog=await loadAdminCatalog(profile.store_id);
+    setProducts(old=>[...currentCatalog,...old.filter(p=>!currentCatalog.some(x=>String(x.id)===String(p.id)))]);
    let currentPromos=await loadAdminPromotions(profile.store_id);
    for(const selected of chosen){
     try{
