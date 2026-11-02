@@ -203,8 +203,11 @@ export default function App(){
  async function updateStatus(id,status){try{if(!String(id).startsWith("DEMO-"))await updateAdminOrderStatus(id,status);const changedAt=new Date().toISOString();setOrders(old=>{const next=old.map(o=>o.id===id?{...o,status,statusHistory:[...(o.statusHistory||[{status:o.status,at:o.createdAt}]),{status,at:changedAt}]}:o);localStorage.setItem("bomjardim_orders",JSON.stringify(next));return next});setNotice("Status atualizado. Horário registrado no histórico desta demonstração.")}catch(error){setNotice("Não foi possível atualizar o pedido: "+(error.message||"erro de conexão."))}}
  async function handleSavePromotions(){
   if(savingPromo)return;
-  const allProducts=[...adminCatalogProducts,...initialProducts.filter(d=>!adminCatalogProducts.some(p=>p.name.trim().toLowerCase()===d.name.trim().toLowerCase()))];
-  const chosen=allProducts.filter(p=>promoSelections[p.id]?.selected);
+  // O seletor e o salvamento precisam usar a mesma lista oficial de produtos.
+  // promoCatalog é carregado diretamente do banco ao abrir a aba Promoções.
+  const sourceProducts=promoCatalog.length?promoCatalog:adminCatalogProducts;
+  const allProducts=sourceProducts.filter((product,index,array)=>array.findIndex(item=>String(item.id)===String(product.id))===index);
+  const chosen=allProducts.filter(p=>promoSelections[String(p.id)]?.selected);
   if(!profile?.store_id){setNotice("Sua sessão expirou. Entre novamente no painel.");return}
   if(!chosen.length){setNotice("Selecione pelo menos um produto no catálogo.");return}
   if(!promoDraft.title.trim()){setNotice("Informe o título da promoção.");return}
