@@ -112,6 +112,43 @@ export async function saveAdminPromotion(promo, storeId) {
   return {...promo,id:data.id,oldPrice:productPrice,promotionalPrice:salePrice};
 }
 
+export async function saveAdminPromotions(promotions, storeId) {
+  if (!supabase || !storeId) throw new Error("Sessão da loja não encontrada.");
+  if (!Array.isArray(promotions) || promotions.length === 0) throw new Error("Selecione pelo menos um produto para salvar.");
+  const payload = promotions.map((promo) => {
+    const oldPrice = Number(promo.oldPrice);
+    const promotionalPrice = Number(String(promo.promotionalPrice).trim().replace(",", "."));
+    if (!promo.productId || !Number.isFinite(oldPrice) || oldPrice <= 0 || !Number.isFinite(promotionalPrice) || promotionalPrice < 0 || promotionalPrice > oldPrice)
+      throw new Error("Preço inválido no produto " + (promo.productName || "") + ".");
+    const startsAt = new Date(promo.startsAt);
+    const endsAt = new Date(promo.endsAt);
+    if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime()) || endsAt <= startsAt)
+      throw new Error("Confira o período da promoção de " + (promo.productName || "um produto") + ".");
+    return {
+      store_id: storeId, product_id: promo.productId, old_price: oldPrice,
+      promotional_price: promotionalPrice, title: String(promo.title || "Oferta especial").trim(),
+      description: String(promo.description || "").trim(), icon: promo.icon || "🔥",
+      starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(), active: promo.active !== false
+    };
+  });
+  // Um único INSERT grava o lote inteiro. Cada novo lote cria registros próprios e preserva os anteriores.
+  const { data, error } = await supabase.from("promotions").insert(payload).select(
+    "id,product_id,old_price,promotional_price,title,description,icon,starts_at,ends_at,active"
+  );
+  if (error) {
+    const detail = [error.message, error.details, error.hint, error.code].filter(Boolean).join(" | ");
+    throw new Error(detail || "O Supabase recusou a gravação do lote de promoções.");
+  }
+  if (!data || data.length !== payload.length) throw new Error("O banco não confirmou todos os itens do lote.");
+  return data.map(row => ({
+    id: row.id, productId: row.product_id, oldPrice: Number(row.old_price),
+    promotionalPrice: Number(row.promotional_price), title: row.title || "Oferta especial",
+    description: row.description || "", icon: row.icon || "🔥",
+    startsAt: row.starts_at ? row.starts_at.slice(0, 16) : "",
+    endsAt: row.ends_at ? row.ends_at.slice(0, 16) : "", active: row.active
+  }));
+}
+
 export async function deleteAdminPromotion(id, storeId) {
   const {error}=await supabase.from("promotions").delete().eq("id",id).eq("store_id",storeId);
   if(error) throw error;
