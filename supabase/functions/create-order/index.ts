@@ -85,10 +85,21 @@ Deno.serve(async (req) => {
     }
 
     const productMap = new Map(products.map((p: any) => [p.id, p]));
+    const now = new Date().toISOString();
+    const { data: activePromotions, error: promotionsError } = await db
+      .from("promotions")
+      .select("product_id,promotional_price,title,icon")
+      .eq("store_id", store.id).eq("active", true)
+      .or(`starts_at.is.null,starts_at.lte.${now}`)
+      .or(`ends_at.is.null,ends_at.gte.${now}`);
+    if (promotionsError) return json({ error: "Não foi possível validar as promoções. Tente novamente." }, 500);
+    const promoMap = new Map((activePromotions || []).map((p: any) => [p.product_id, p]));
     const orderItems = cleanItems.map((item: any) => {
       const product: any = productMap.get(item.product_id);
+      const promo: any = promoMap.get(product.id);
       const quantity = Math.round(item.quantity * 1000) / 1000;
-      const unitPrice = Number(product.price);
+      const regularPrice = Number(product.price);
+      const unitPrice = promo ? Number(promo.promotional_price) : regularPrice;
       return {
         product_id: product.id,
         product_name: product.name,
@@ -96,6 +107,8 @@ Deno.serve(async (req) => {
         unit: product.unit,
         unit_price: unitPrice,
         line_total: Math.round(quantity * unitPrice * 100) / 100,
+        promotion_title: promo?.title || null,
+        regular_price: promo ? regularPrice : null
       };
     });
     const subtotal = Math.round(orderItems.reduce((sum: number, item: any) => sum + item.line_total, 0) * 100) / 100;
