@@ -203,8 +203,6 @@ export default function App(){
  async function updateStatus(id,status){try{if(!String(id).startsWith("DEMO-"))await updateAdminOrderStatus(id,status);const changedAt=new Date().toISOString();setOrders(old=>{const next=old.map(o=>o.id===id?{...o,status,statusHistory:[...(o.statusHistory||[{status:o.status,at:o.createdAt}]),{status,at:changedAt}]}:o);localStorage.setItem("bomjardim_orders",JSON.stringify(next));return next});setNotice("Status atualizado. Horário registrado no histórico desta demonstração.")}catch(error){setNotice("Não foi possível atualizar o pedido: "+(error.message||"erro de conexão."))}}
  async function handleSavePromotions(){
   if(savingPromo)return;
-  // O seletor e o salvamento precisam usar a mesma lista oficial de produtos.
-  // promoCatalog é carregado diretamente do banco ao abrir a aba Promoções.
   const sourceProducts=promoCatalog.length?promoCatalog:adminCatalogProducts;
   const allProducts=sourceProducts.filter((product,index,array)=>array.findIndex(item=>String(item.id)===String(product.id))===index);
   const chosen=allProducts.filter(p=>promoSelections[String(p.id)]?.selected);
@@ -215,57 +213,70 @@ export default function App(){
   if(!promoDraft.startsAt||!promoDraft.endsAt){setNotice("Informe a data e o horário de início e de término da promoção.");return}
   const startsAt=new Date(promoDraft.startsAt),endsAt=new Date(promoDraft.endsAt);
   if(!Number.isFinite(startsAt.getTime())||!Number.isFinite(endsAt.getTime())||endsAt<=startsAt){setNotice("Confira as datas: o término precisa ser posterior ao início.");return}
-  const selectionFor=productId=>promoSelections[String(productId)]||{};
+  const selectionFor=id=>promoSelections[String(id)]||{};
   const invalid=chosen.find(p=>{
    const raw=String(selectionFor(p.id).price??"").trim().replace(",",".");
    const price=Number(raw);
    return raw===""||!Number.isFinite(price)||price<0||Number(p.price)<=0||price>Number(p.price);
   });
   if(invalid){setNotice("Confira o preço promocional de "+invalid.name+". Ele precisa ser válido e não pode ultrapassar o preço normal de "+money(invalid.price)+".");return}
-  setSavingPromo(true);setNotice("Salvando "+chosen.length+" produto(s). Não feche esta tela...");
+
+  setSavingPromo(true);
+  setNotice("Salvando "+chosen.length+" produto(s) em lote. Aguarde...");
   const successfulIds=[];
   const failures=[];
   try{
-   let currentCatalog=await loadAdminCatalog(profile.store_id);
-    setProducts(old=>[...currentCatalog,...old.filter(p=>!currentCatalog.some(x=>String(x.id)===String(p.id)))]);
-   let currentPromos=await loadAdminPromotions(profile.store_id);
-   for(const selected of chosen){
-    try{
-     const nameKey=selected.name.trim().toLowerCase();
-     let product=(typeof selected.id==="string"&&/^[0-9a-f-]{36}$/i.test(selected.id))
-       ? selected
-       : currentCatalog.find(p=>p.name.trim().toLowerCase()===nameKey);
-     if(!product){
-      product=await saveAdminProduct({...selected,imageUrl:selected.imageUrl||demoMeatImage(selected.category)},profile.store_id);
-      currentCatalog=[...currentCatalog.filter(p=>p.name.trim().toLowerCase()!==nameKey),product];
-      setProducts(old=>[...old.filter(p=>p.name.trim().toLowerCase()!==nameKey),product]);
-     }
-     const existing=currentPromos.find(p=>String(p.productId)===String(product.id));
-     const saved=await saveAdminPromotion({
-      id:existing?.id,productId:product.id,title:promoDraft.title.trim(),description:"",
-      icon:selectionFor(selected.id).icon||"🔥",
-      promotionalPrice:String(selectionFor(selected.id).price).trim().replace(",","."),
-      oldPrice:product.price,startsAt:promoDraft.startsAt,endsAt:promoDraft.endsAt,active:true
-     },profile.store_id);
-     currentPromos=[...currentPromos.filter(p=>String(p.productId)!==String(product.id)),saved];
-     successfulIds.push(selected.id);
-    }catch(error){
-     failures.push(selected.name+": "+(error?.message||"erro ao salvar este item"));
+   const [loadedCatalog,currentPromos]=await Promise.all([
+    loadAdminCatalog(profile.store_id),
+    loadAdminPromotions(profile.store_id)
+   ]);
+   let currentCatalog=[...loadedCatalog];
+   setProducts(old=>[...loadedCatalog,...old.filter(p=>!loadedCatalog.some(x=>String(x.id)===String(p.id)))]);
+   const results=await Promise.allSettled(chosen.map(async selected=>{
+    const nameKey=selected.name.trim().toLowerCase();
+    let product=(typeof selected.id==="string"&&/^[0-9a-f-]{36}$/i.test(selected.id))
+      ? currentCatalog.find(p=>String(p.id)===String(selected.id))||selected
+      : currentCatalog.find(p=>p.name.trim().toLowerCase()===nameKey);
+    if(!product){
+     product=await saveAdminProduct({...selected,imageUrl:selected.imageUrl||demoMeatImage(selected.category)},profile.store_id);
+     currentCatalog=[...currentCatalog.filter(p=>p.name.trim().toLowerCase()!==nameKey),product];
     }
-   }
-   setAdminPromos(currentPromos);
-   setPromoSelections(old=>Object.fromEntries(Object.entries(old).filter(([id,value])=>value.selected&&!successfulIds.some(savedId=>String(savedId)===String(id)))));
+    const existing=currentPromos.find(p=>String(p.productId)===String(product.id));
+    const saved=await saveAdminPromotion({
+     id:existing?.id,productId:product.id,title:promoDraft.title.trim(),description:"",
+     icon:selectionFor(selected.id).icon||"🔥",
+     promotionalPrice:String(selectionFor(selected.id).price).trim().replace(",","."),
+     oldPrice:product.price,startsAt:promoDraft.startsAt,endsAt:promoDraft.endsAt,active:true
+    },profile.store_id);
+    return {selectedId:String(selected.id),productName:selected.name,saved};
+   }));
+   let updatedPromos=[...currentPromos];
+   results.forEach((result,index)=>{
+    if(result.status==="fulfilled"){
+     const {selectedId,saved}=result.value;
+     updatedPromos=[...updatedPromos.filter(p=>String(p.productId)!==String(saved.productId)),saved];
+     successfulIds.push(selectedId);
+    }else{
+     const reason=result.reason;
+     failures.push(chosen[index].name+": "+(reason?.message||"erro ao salvar este item"));
+    }
+   });
+   setAdminPromos(updatedPromos);
+   setPromoSelections(old=>Object.fromEntries(Object.entries(old).filter(([id,value])=>value.selected&&!successfulIds.includes(String(id)))));
    try{
-    const [freshCatalog,freshAdmin,freshPublic]=await Promise.all([loadAdminCatalog(profile.store_id),loadAdminPromotions(profile.store_id),loadPublicPromotions()]);
-    setProducts(old=>[...freshCatalog,...old.filter(p=>!freshCatalog.some(f=>f.name.trim().toLowerCase()===p.name.trim().toLowerCase())&& !successfulIds.some(id=>String(id)===String(p.id)))]);
-    setAdminPromos(freshAdmin);setPromos(freshPublic);
+    const [freshCatalog,freshAdmin,freshPublic]=await Promise.all([
+     loadAdminCatalog(profile.store_id),loadAdminPromotions(profile.store_id),loadPublicPromotions()
+    ]);
+    setProducts(old=>[...freshCatalog,...old.filter(p=>!freshCatalog.some(f=>f.name.trim().toLowerCase()===p.name.trim().toLowerCase()))]);
+    setAdminPromos(freshAdmin);
+    setPromos(freshPublic);
    }catch(refreshError){
     if(!failures.length)failures.push("Os itens foram gravados, mas a atualização da tela falhou. Atualize a página para conferir.");
    }
    if(failures.length){
-    setNotice(successfulIds.length+" de "+chosen.length+" produto(s) salvos. Os itens com problema continuam selecionados: "+failures.slice(0,4).join(" | ")+(failures.length>4?" | e mais "+(failures.length-4)+" item(ns).":""));
+    setNotice(successfulIds.length+" de "+chosen.length+" produto(s) salvos. Os que falharam continuam selecionados: "+failures.slice(0,5).join(" | ")+(failures.length>5?" | e mais "+(failures.length-5)+" item(ns).":""));
    }else{
-    setNotice("Promoção salva e ativada! "+successfulIds.length+" produto(s) publicados com os preços e o período escolhidos.");
+    setNotice("Promoção salva! "+successfulIds.length+" produto(s) publicados de uma só vez. Você pode selecionar mais produtos e salvar outro lote quando quiser.");
    }
   }catch(error){
    setNotice("Não foi possível iniciar o salvamento: "+(error?.message||"verifique a conexão e as permissões do banco de dados."));
