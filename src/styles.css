@@ -175,6 +175,10 @@ td{border-color:var(--line)}
 .promo-price-field{font-size:12px}
 .promo-price-field input{width:100%;margin-top:5px}
 .promo-price-field input:disabled{opacity:.45}
+.product-card-promo{border:2px solid #c89b3c;box-shadow:0 0 0 2px #c89b3c20,0 8px 22px #8a641b18;background:linear-gradient(180deg,#fffdf5 0%,#fff 100%)}
+.product-card-promo .product-art{background:linear-gradient(135deg,#fff1c7,#f3dfaa);color:#805b16}
+.product-card-promo .product-art i{background:#a87516;color:#fff8e5;border:1px solid #e8c66d;border-radius:999px;padding:5px 9px;font-style:normal;font-weight:800;box-shadow:0 2px 8px #6d4a172b}
+.product-card-promo .product-bottom del{color:#8b8170;font-size:.82em;font-weight:500}
 .product-card-promo{border:2px solid #e7a52b;box-shadow:0 5px 18px rgba(180,120,20,.12)}
 .product-card-promo .product-art i{background:#fff0c2;color:#875600}
 @media(max-width:520px){.promo-picker-row{grid-template-columns:minmax(0,1fr) 118px;gap:8px;padding:9px}.promo-price-field{font-size:11px}.promo-product-check b{font-size:13px}}
