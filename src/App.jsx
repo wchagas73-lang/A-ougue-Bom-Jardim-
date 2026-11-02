@@ -24,6 +24,7 @@ const initialProducts = [
   {id:18,name:"Coxa e sobrecoxa",category:"Frango",price:15.90,unit:"kg",note:"Saborosa e econômica",available:true},
   {id:19,name:"Filé de peito",category:"Frango",price:25.90,unit:"kg",note:"Prático para grelhar",available:true},
   {id:20,name:"Coxinha da asa",category:"Frango",price:21.90,unit:"kg",note:"Ideal para petiscos",available:true},
+  {id:26,name:"Frango assado",category:"Frango",price:0,unit:"un.",note:"Frango assado inteiro",available:true},
   {id:21,name:"Kit Churrasco Família",category:"Kit Churrasco",price:149.90,unit:"un.",note:"Seleção demonstrativa para a família",available:true,featured:true},
   {id:22,name:"Kit Churrasco Especial",category:"Kit Churrasco",price:199.90,unit:"un.",note:"Seleção demonstrativa especial",available:true},
   {id:23,name:"Carvão 4 kg",category:"Diversos",price:18.90,unit:"un.",note:"Para completar o churrasco",available:true},
