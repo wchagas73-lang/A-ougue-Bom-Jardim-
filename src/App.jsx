@@ -53,6 +53,7 @@ export default function App(){
  useEffect(()=>localStorage.setItem("bomjardim_delivery",JSON.stringify(delivery)),[delivery]);
  useEffect(()=>{let alive=true;(async()=>{try{const result=await loadPublicCatalog();if(!alive)return;if(result.products.length){setProducts(result.products);setStoreInfo(result.store)}setCatalogLoaded(true)}catch(error){if(alive)setNotice("Não foi possível atualizar o catálogo online. Exibindo a demonstração.");} })();return()=>{alive=false}},[]);
  useEffect(()=>{if(!session||!profile?.store_id)return;let alive=true;(async()=>{setDataLoading(true);try{const [dbProducts,dbOrders]=await Promise.all([loadAdminCatalog(profile.store_id),loadAdminOrders(profile.store_id)]);if(!alive)return;setProducts(dbProducts);setOrders(dbOrders);if(dbProducts.length===0)setNotice("Banco conectado. Cadastre o primeiro produto oficial da loja.");}catch(error){if(alive)setNotice("Erro ao carregar os dados da loja: "+(error.message||"verifique as permissões do Supabase."));}finally{if(alive)setDataLoading(false)}})();return()=>{alive=false}},[session,profile?.store_id]);
+ const STORE_WHATSAPP="5532999953215";
  const catalogProducts=products.length?products:initialProducts;
  const visible=useMemo(()=>catalogProducts.filter(p=>p.available&&(category==="Todos"||p.category===category)&&p.name.toLowerCase().includes(search.toLowerCase())),[catalogProducts,category,search]);
  const count=cart.reduce((s,p)=>s+p.qty,0),subtotal=cart.reduce((s,p)=>s+p.price*p.qty,0);
@@ -80,8 +81,11 @@ export default function App(){
    }});
    if(error)throw error;
    if(!data?.success)throw new Error(data?.error||"Não foi possível registrar o pedido.");
+   const orderLines=cart.map(p=>"- "+p.name+": "+p.qty+" "+p.unit+" = "+money(p.price*p.qty)).join("\n");
+   const whatsappMessage="NOVO PEDIDO - AÇOUGUE BOM JARDIM\nPedido #"+data.order_number+"\n\nCliente: "+customer.name+"\nTelefone: "+customer.phone+"\nEndereço: "+customer.address+"\nPagamento: "+customer.payment+(customer.change?"\nTroco para: "+customer.change:"")+(customer.notes?"\nObservações: "+customer.notes:"")+"\n\nITENS\n"+orderLines+"\n\nTotal: "+money(data.total);
+   window.location.href="https://wa.me/"+STORE_WHATSAPP+"?text="+encodeURIComponent(whatsappMessage);
    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});
-   setNotice("Pedido #"+data.order_number+" registrado com sucesso na loja. Total confirmado: "+money(data.total)+".");
+   setNotice("Pedido #"+data.order_number+" registrado com sucesso. Abrindo o WhatsApp da loja...");
    setArea("store");
   }catch(error){setNotice("Não foi possível enviar o pedido: "+(error.message||"tente novamente."));}
   finally{setDataLoading(false)}
