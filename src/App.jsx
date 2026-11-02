@@ -98,7 +98,7 @@ export default function App(){
  const categories=useMemo(()=>[...(promos.length?["Promoções"]:[]),...baseCategories],[promos]);
  const visible=useMemo(()=>catalogProducts.filter(p=>p.available&&(category==="Todos"||(category==="Promoções"?activePromoByProduct.has(String(p.id)):category==="Aves"?p.category==="Frango":category==="Churrasco"?p.category==="Kit Churrasco":p.category===category))&&p.name.toLowerCase().includes(search.toLowerCase())),[catalogProducts,category,search,activePromoByProduct]);
  const priceOf=p=>Number(activePromoByProduct.get(String(p.id))?.promotionalPrice??p.price);
- useEffect(()=>{if(promos.length&&category==="Todos")setCategory("Promoções")},[promos,category]);
+ // Mantém "Todos" como categoria inicial; promoções não escondem o restante do catálogo.
  const count=cart.reduce((s,p)=>s+p.qty,0),subtotal=cart.reduce((s,p)=>s+priceOf(p)*p.qty,0);
  const fee=delivery.mode==="fixed"?Number(delivery.fee||0):(delivery.mode==="freeOver"&&subtotal>=Number(delivery.freeOver||0)?0:Number(delivery.fee||0));
  const total=subtotal+fee;
