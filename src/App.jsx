@@ -120,7 +120,8 @@ export default function App(){
  const adminCatalogProducts=products.filter(p=>typeof p.id==="string"&&/^[0-9a-f-]{36}$/i.test(p.id));
  const activePromoByProduct=useMemo(()=>new Map(promos.map(p=>[String(p.productId),p])),[promos]);
  const categories=useMemo(()=>[...(promos.length?["Promoções"]:[]),...baseCategories],[promos]);
- const visible=useMemo(()=>catalogProducts.filter(p=>p.available&&(category==="Todos"||(category==="Promoções"?activePromoByProduct.has(String(p.id)):category==="Aves"?p.category==="Frango":category==="Churrasco"?(p.category==="Churrasco"||p.category==="Kit Churrasco"):p.category===category))&&p.name.toLowerCase().includes(search.toLowerCase())),[catalogProducts,category,search,activePromoByProduct]);
+ const normalizeCategory=value=>String(value||"").trim().toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"");
+ const visible=useMemo(()=>catalogProducts.filter(p=>p.available&&(category==="Todos"||(category==="Promoções"?activePromoByProduct.has(String(p.id)):category==="Aves"?["aves","ave","frango","frangos"].includes(normalizeCategory(p.category)):category==="Churrasco"?["churrasco","kit churrasco"].includes(normalizeCategory(p.category)):normalizeCategory(p.category)===normalizeCategory(category)))&&p.name.toLocaleLowerCase("pt-BR").includes(search.toLocaleLowerCase("pt-BR"))),[catalogProducts,category,search,activePromoByProduct]);
  const priceOf=p=>Number(activePromoByProduct.get(String(p.id))?.promotionalPrice??p.price);
  // Mantém "Todos" como categoria inicial; promoções não escondem o restante do catálogo.
  const count=cart.reduce((s,p)=>s+p.qty,0),subtotal=cart.reduce((s,p)=>s+priceOf(p)*p.qty,0);
