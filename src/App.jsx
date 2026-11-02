@@ -63,7 +63,9 @@ export default function App(){
  const [delivery,setDelivery]=useState(()=>load("bomjardim_delivery",{mode:"fixed",fee:7,freeOver:150,paused:false,estimatedTime:"40 a 60 minutos"}));
  const [category,setCategory]=useState("Todos"),[search,setSearch]=useState(""),[cart,setCart]=useState([]),[cartOpen,setCartOpen]=useState(false);
  const [customer,setCustomer]=useState({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});
- const addressInputRef=useRef(null);\n const presentationVideoRef=useRef(null);\n useEffect(()=>{const video=presentationVideoRef.current;if(!video)return;const start=()=>{if(!video.src){video.src="/bom-jardim-apresentacao.mp4";video.load()}const play=video.play();if(play?.catch)play.catch(()=>{});};if(!("IntersectionObserver" in window)){start();return}const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){start();observer.disconnect()}},{rootMargin:"180px"});observer.observe(video);return()=>observer.disconnect()},[]);
+ const addressInputRef=useRef(null);
+ const presentationVideoRef=useRef(null);
+ useEffect(()=>{const video=presentationVideoRef.current;if(!video)return;const start=()=>{if(!video.src){video.src="/bom-jardim-apresentacao.mp4";video.load()}const play=video.play();if(play?.catch)play.catch(()=>{});};if(!("IntersectionObserver" in window)){start();return}const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){start();observer.disconnect()}},{rootMargin:"180px"});observer.observe(video);return()=>observer.disconnect()},[]);
  const [area,setArea]=useState("store"),[adminTab,setAdminTab]=useState("overview"),[editing,setEditing]=useState(null),[notice,setNotice]=useState("");
  const [orderFilter,setOrderFilter]=useState("Novos e pendentes");
  const [orderSearch,setOrderSearch]=useState("");
@@ -146,15 +148,40 @@ export default function App(){
    const createdAt=new Date().toISOString();
    const demoOrder={id:"DEMO-"+demoNumber,createdAt,estimatedDeliveryMinutes:estimatedTime,customer:{...customer},items:cart.map(p=>({...p,price:priceOf(p)})),subtotal,fee,total,payment:customer.payment,status:"Novo",statusHistory:[{status:"Novo",at:createdAt}]};
    const nextOrders=[demoOrder,...orders];setOrders(nextOrders);localStorage.setItem("bomjardim_orders",JSON.stringify(nextOrders));
-   const orderLines=cart.map(p=>"• "+p.name+"\n  "+p.qty+" "+p.unit+" × "+money(priceOf(p))+"/"+p.unit+" = "+money(priceOf(p)*p.qty)).join("\n\n");
-   const whatsappMessage="🥩 AÇOUGUE BOM JARDIM\n"+
-    "📦 NOVO PEDIDO DE DEMONSTRAÇÃO #"+demoNumber+"\n"+
-    "🕒 Recebido em: "+new Date(createdAt).toLocaleString("pt-BR")+"\n\n"+
-    "👤 CLIENTE\n"+customer.name+"\n📞 "+customer.phone+"\n📍 "+customer.address+"\n\n"+
-    "🛒 PRODUTOS\n"+orderLines+"\n\n"+
-    "💰 RESUMO DO PEDIDO\nProdutos: "+money(subtotal)+"\n🛵 Entrega: "+money(fee)+"\n💵 TOTAL: "+money(total)+"\n\n"+
-    "💳 Pagamento: "+customer.payment+(customer.change?"\n💸 Troco para: "+customer.change:"")+
-    (customer.notes?"\n📝 Observações: "+customer.notes:"")+"\n\n❤️ Obrigado pela preferência!\nPedido fictício para demonstração.";
+   const orderLines=cart.map(p=>"• "+p.name+"
+  "+p.qty+" "+p.unit+" × "+money(priceOf(p))+"/"+p.unit+" = "+money(priceOf(p)*p.qty)).join("
+
+");
+   const whatsappMessage="🥩 AÇOUGUE BOM JARDIM
+"+
+    "📦 NOVO PEDIDO DE DEMONSTRAÇÃO #"+demoNumber+"
+"+
+    "🕒 Recebido em: "+new Date(createdAt).toLocaleString("pt-BR")+"
+
+"+
+    "👤 CLIENTE
+"+customer.name+"
+📞 "+customer.phone+"
+📍 "+customer.address+"
+
+"+
+    "🛒 PRODUTOS
+"+orderLines+"
+
+"+
+    "💰 RESUMO DO PEDIDO
+Produtos: "+money(subtotal)+"
+🛵 Entrega: "+money(fee)+"
+💵 TOTAL: "+money(total)+"
+
+"+
+    "💳 Pagamento: "+customer.payment+(customer.change?"
+💸 Troco para: "+customer.change:"")+
+    (customer.notes?"
+📝 Observações: "+customer.notes:"")+"
+
+❤️ Obrigado pela preferência!
+Pedido fictício para demonstração.";
    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});
    setNotice("Pedido de demonstração criado! Abrindo o WhatsApp da loja.");
    window.location.href="https://wa.me/"+STORE_WHATSAPP+"?text="+encodeURIComponent(whatsappMessage);
@@ -176,16 +203,40 @@ export default function App(){
    if(error)throw error;
    if(!data?.success)throw new Error(data?.error||"Não foi possível registrar o pedido.");
    const orderItems=Array.isArray(data.items)&&data.items.length?data.items:cart.map(p=>({product_name:p.name,quantity:p.qty,unit:p.unit,unit_price:p.price,line_total:p.price*p.qty}));
-   const orderLines=orderItems.map(item=>"• "+item.product_name+"\n  "+item.quantity+" "+item.unit+" × "+money(item.unit_price)+"/"+item.unit+" = "+money(item.line_total)).join("\n\n");
+   const orderLines=orderItems.map(item=>"• "+item.product_name+"
+  "+item.quantity+" "+item.unit+" × "+money(item.unit_price)+"/"+item.unit+" = "+money(item.line_total)).join("
+
+");
    const receivedAt=new Date().toLocaleString("pt-BR");
-   const whatsappMessage="🥩 AÇOUGUE BOM JARDIM\n"+
-    "📦 NOVO PEDIDO #"+data.order_number+"\n"+
-    "🕒 Recebido em: "+receivedAt+"\n\n"+
-    "👤 CLIENTE\n"+customer.name+"\n📞 "+customer.phone+"\n📍 "+customer.address+"\n\n"+
-    "🛒 PRODUTOS\n"+orderLines+"\n\n"+
-    "💰 RESUMO DO PEDIDO\nProdutos: "+money(data.subtotal)+"\n🛵 Entrega: "+money(data.delivery_fee)+"\n💵 TOTAL: "+money(data.total)+"\n\n"+
-    "💳 Pagamento: "+customer.payment+(customer.change?"\n💸 Troco para: "+customer.change:"")+
-    (customer.notes?"\n📝 Observações: "+customer.notes:"")+"\n\n❤️ Obrigado pela preferência!";
+   const whatsappMessage="🥩 AÇOUGUE BOM JARDIM
+"+
+    "📦 NOVO PEDIDO #"+data.order_number+"
+"+
+    "🕒 Recebido em: "+receivedAt+"
+
+"+
+    "👤 CLIENTE
+"+customer.name+"
+📞 "+customer.phone+"
+📍 "+customer.address+"
+
+"+
+    "🛒 PRODUTOS
+"+orderLines+"
+
+"+
+    "💰 RESUMO DO PEDIDO
+Produtos: "+money(data.subtotal)+"
+🛵 Entrega: "+money(data.delivery_fee)+"
+💵 TOTAL: "+money(data.total)+"
+
+"+
+    "💳 Pagamento: "+customer.payment+(customer.change?"
+💸 Troco para: "+customer.change:"")+
+    (customer.notes?"
+📝 Observações: "+customer.notes:"")+"
+
+❤️ Obrigado pela preferência!";
    window.location.href="https://wa.me/"+STORE_WHATSAPP+"?text="+encodeURIComponent(whatsappMessage);
    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});
    setNotice("Pedido #"+data.order_number+" registrado com sucesso. Abrindo o WhatsApp da loja...");
