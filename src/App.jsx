@@ -53,7 +53,8 @@ export default function App(){
  function add(p){if(delivery.paused){setNotice("A loja pausou temporariamente o recebimento de pedidos.");return}setCart(old=>{const x=old.find(i=>i.id===p.id);const step=p.unit==="kg"?0.5:1;return x?old.map(i=>i.id===p.id?{...i,qty:Math.round((i.qty+step)*1000)/1000}:i):[...old,{...p,qty:p.unit==="kg"?0.5:1}]})}
  function qty(id,d){setCart(old=>old.map(p=>p.id===id?{...p,qty:Math.max(0,Math.round((p.qty+d)*1000)/1000)}:p).filter(p=>p.qty>0))}
  function finishOrder(){
-  if(delivery.paused){setNotice("A loja pausou temporariamente o recebimento de pedidos.");return}\n  if(!customer.name.trim()||!customer.phone.trim()||!customer.address.trim()||!cart.length){setNotice("Preencha nome, telefone, endereço e adicione pelo menos um produto.");return}
+  if(delivery.paused){setNotice("A loja pausou temporariamente o recebimento de pedidos.");return}
+  if(!customer.name.trim()||!customer.phone.trim()||!customer.address.trim()||!cart.length){setNotice("Preencha nome, telefone, endereço e adicione pelo menos um produto.");return}
   const order={id:"BJ-"+String(Date.now()).slice(-6),customer:{...customer},items:cart.map(p=>({...p})),subtotal,fee,total,payment:customer.payment,status:"Novo",createdAt:new Date().toISOString()};
   setOrders(old=>[order,...old]);setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});setNotice("Pedido demonstrativo registrado! Ele já aparece no painel da loja.");
   setArea("store");
