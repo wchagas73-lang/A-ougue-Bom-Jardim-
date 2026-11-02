@@ -38,7 +38,8 @@ const load = (key,fallback) => { try { const v=localStorage.getItem(key); return
 export default function App(){
  const [products,setProducts]=useState(()=>load("bomjardim_products",initialProducts));
  const [orders,setOrders]=useState(()=>load("bomjardim_orders",[]));
- const [promos,setPromos]=useState([]),[adminPromos,setAdminPromos]=useState([]);\n const [promoDraft,setPromoDraft]=useState({productId:"",title:"Oferta especial",description:"",promotionalPrice:"",startsAt:"",endsAt:"",active:true});
+ const [promos,setPromos]=useState([]),[adminPromos,setAdminPromos]=useState([]);
+ const [promoDraft,setPromoDraft]=useState({productId:"",title:"Oferta especial",description:"",promotionalPrice:"",startsAt:"",endsAt:"",active:true});
  const [delivery,setDelivery]=useState(()=>load("bomjardim_delivery",{mode:"fixed",fee:7,freeOver:150,paused:false,estimatedTime:"40 a 60 minutos"}));
  const [category,setCategory]=useState("Todos"),[search,setSearch]=useState(""),[cart,setCart]=useState([]),[cartOpen,setCartOpen]=useState(false);
  const [customer,setCustomer]=useState({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});
@@ -75,7 +76,6 @@ export default function App(){
  async function signOut(){if(supabase)await supabase.auth.signOut();setSession(null);setProfile(null);setArea("store")}
  useEffect(()=>localStorage.setItem("bomjardim_products",JSON.stringify(products)),[products]);
  useEffect(()=>localStorage.setItem("bomjardim_orders",JSON.stringify(orders)),[orders]);
- useEffect(()=>localStorage.setItem("bomjardim_promos",JSON.stringify(promos)),[promos]);
  useEffect(()=>localStorage.setItem("bomjardim_delivery",JSON.stringify(delivery)),[delivery]);
  useEffect(()=>{let alive=true;(async()=>{try{const [result,activePromos]=await Promise.all([loadPublicCatalog(),loadPublicPromotions()]);if(!alive)return;if(result.products.length){setProducts(result.products);setStoreInfo(result.store)}setPromos(activePromos);setCatalogLoaded(true)}catch(error){if(alive)setNotice("Não foi possível atualizar o catálogo online. Confira a migração de promoções no Supabase.");} })();return()=>{alive=false}},[]);
  useEffect(()=>{if(!session||!profile?.store_id)return;let alive=true;(async()=>{setDataLoading(true);try{const [dbProducts,dbOrders,dbPromos]=await Promise.all([loadAdminCatalog(profile.store_id),loadAdminOrders(profile.store_id),profile.role==="owner"?loadAdminPromotions(profile.store_id):Promise.resolve([])]);if(!alive)return;setProducts(dbProducts);setAdminPromos(dbPromos);const localDemoOrders=load("bomjardim_orders",[]).filter(o=>String(o.id).startsWith("DEMO-"));setOrders([...localDemoOrders,...dbOrders]);if(dbProducts.length===0)setNotice("Banco conectado. Cadastre o primeiro produto oficial da loja.");}catch(error){if(alive)setNotice("Erro ao carregar os dados da loja: "+(error.message||"verifique as permissões do Supabase."));}finally{if(alive)setDataLoading(false)}})();return()=>{alive=false}},[session,profile?.store_id]);
@@ -83,7 +83,9 @@ export default function App(){
  const estimatedTime=delivery.estimatedTime||"40 a 60 minutos";
  const catalogProducts=products.length?products:initialProducts;
  const visible=useMemo(()=>catalogProducts.filter(p=>p.available&&(category==="Todos"||p.category===category)&&p.name.toLowerCase().includes(search.toLowerCase())),[catalogProducts,category,search]);
- const activePromoByProduct=useMemo(()=>new Map(promos.map(p=>[String(p.productId),p])),[promos]);\n const priceOf=p=>Number(activePromoByProduct.get(String(p.id))?.promotionalPrice??p.price);\n const count=cart.reduce((s,p)=>s+p.qty,0),subtotal=cart.reduce((s,p)=>s+priceOf(p)*p.qty,0);
+ const activePromoByProduct=useMemo(()=>new Map(promos.map(p=>[String(p.productId),p])),[promos]);
+ const priceOf=p=>Number(activePromoByProduct.get(String(p.id))?.promotionalPrice??p.price);
+ const count=cart.reduce((s,p)=>s+p.qty,0),subtotal=cart.reduce((s,p)=>s+priceOf(p)*p.qty,0);
  const fee=delivery.mode==="fixed"?Number(delivery.fee||0):(delivery.mode==="freeOver"&&subtotal>=Number(delivery.freeOver||0)?0:Number(delivery.fee||0));
  const total=subtotal+fee;
  const delivered=orders.filter(o=>o.status==="Entregue");
@@ -99,15 +101,15 @@ export default function App(){
    const createdAt=new Date().toISOString();
    const demoOrder={id:"DEMO-"+demoNumber,createdAt,estimatedDeliveryMinutes:estimatedTime,customer:{...customer},items:cart.map(p=>({...p,price:priceOf(p)})),subtotal,fee,total,payment:customer.payment,status:"Novo",statusHistory:[{status:"Novo",at:createdAt}]};
    const nextOrders=[demoOrder,...orders];setOrders(nextOrders);localStorage.setItem("bomjardim_orders",JSON.stringify(nextOrders));
-   const orderLines=cart.map(p=>"• "+p.name+"\n  "+p.qty+" "+p.unit+" × "+money(p.price)+"/"+p.unit+" = "+money(p.price*p.qty)).join("\n\n");
-   const whatsappMessage="🥩 AÇOUGUE BOM JARDIM\\n"+
-    "📦 NOVO PEDIDO DE DEMONSTRAÇÃO #"+demoNumber+"\\n"+
-    "🕒 Recebido em: "+new Date(createdAt).toLocaleString("pt-BR")+"\\n\\n"+
-    "👤 CLIENTE\\n"+customer.name+"\\n📞 "+customer.phone+"\\n📍 "+customer.address+"\\n\\n"+
-    "🛒 PRODUTOS\\n"+orderLines+"\\n\\n"+
-    "💰 RESUMO DO PEDIDO\\nProdutos: "+money(subtotal)+"\\n🛵 Entrega: "+money(fee)+"\\n💵 TOTAL: "+money(total)+"\\n\\n"+
-    "💳 Pagamento: "+customer.payment+(customer.change?"\\n💸 Troco para: "+customer.change:"")+
-    (customer.notes?"\\n📝 Observações: "+customer.notes:"")+"\\n\\n❤️ Obrigado pela preferência!\\nPedido fictício para demonstração.";
+   const orderLines=cart.map(p=>"• "+p.name+"\n  "+p.qty+" "+p.unit+" × "+money(priceOf(p))+"/"+p.unit+" = "+money(priceOf(p)*p.qty)).join("\n\n");
+   const whatsappMessage="🥩 AÇOUGUE BOM JARDIM\n"+
+    "📦 NOVO PEDIDO DE DEMONSTRAÇÃO #"+demoNumber+"\n"+
+    "🕒 Recebido em: "+new Date(createdAt).toLocaleString("pt-BR")+"\n\n"+
+    "👤 CLIENTE\n"+customer.name+"\n📞 "+customer.phone+"\n📍 "+customer.address+"\n\n"+
+    "🛒 PRODUTOS\n"+orderLines+"\n\n"+
+    "💰 RESUMO DO PEDIDO\nProdutos: "+money(subtotal)+"\n🛵 Entrega: "+money(fee)+"\n💵 TOTAL: "+money(total)+"\n\n"+
+    "💳 Pagamento: "+customer.payment+(customer.change?"\n💸 Troco para: "+customer.change:"")+
+    (customer.notes?"\n📝 Observações: "+customer.notes:"")+"\n\n❤️ Obrigado pela preferência!\nPedido fictício para demonstração.";
    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});
    setNotice("Pedido de demonstração criado! Abrindo o WhatsApp da loja.");
    window.location.href="https://wa.me/"+STORE_WHATSAPP+"?text="+encodeURIComponent(whatsappMessage);
@@ -129,16 +131,16 @@ export default function App(){
    if(error)throw error;
    if(!data?.success)throw new Error(data?.error||"Não foi possível registrar o pedido.");
    const orderItems=Array.isArray(data.items)&&data.items.length?data.items:cart.map(p=>({product_name:p.name,quantity:p.qty,unit:p.unit,unit_price:p.price,line_total:p.price*p.qty}));
-   const orderLines=orderItems.map(item=>"• "+item.product_name+"\\n  "+item.quantity+" "+item.unit+" × "+money(item.unit_price)+"/"+item.unit+" = "+money(item.line_total)).join("\\n\\n");
+   const orderLines=orderItems.map(item=>"• "+item.product_name+"\n  "+item.quantity+" "+item.unit+" × "+money(item.unit_price)+"/"+item.unit+" = "+money(item.line_total)).join("\n\n");
    const receivedAt=new Date().toLocaleString("pt-BR");
-   const whatsappMessage="🥩 AÇOUGUE BOM JARDIM\\n"+
-    "📦 NOVO PEDIDO #"+data.order_number+"\\n"+
-    "🕒 Recebido em: "+receivedAt+"\\n\\n"+
-    "👤 CLIENTE\\n"+customer.name+"\\n📞 "+customer.phone+"\\n📍 "+customer.address+"\\n\\n"+
-    "🛒 PRODUTOS\\n"+orderLines+"\\n\\n"+
-    "💰 RESUMO DO PEDIDO\\nProdutos: "+money(data.subtotal)+"\\n🛵 Entrega: "+money(data.delivery_fee)+"\\n💵 TOTAL: "+money(data.total)+"\\n\\n"+
-    "💳 Pagamento: "+customer.payment+(customer.change?"\\n💸 Troco para: "+customer.change:"")+
-    (customer.notes?"\\n📝 Observações: "+customer.notes:"")+"\\n\\n❤️ Obrigado pela preferência!";
+   const whatsappMessage="🥩 AÇOUGUE BOM JARDIM\n"+
+    "📦 NOVO PEDIDO #"+data.order_number+"\n"+
+    "🕒 Recebido em: "+receivedAt+"\n\n"+
+    "👤 CLIENTE\n"+customer.name+"\n📞 "+customer.phone+"\n📍 "+customer.address+"\n\n"+
+    "🛒 PRODUTOS\n"+orderLines+"\n\n"+
+    "💰 RESUMO DO PEDIDO\nProdutos: "+money(data.subtotal)+"\n🛵 Entrega: "+money(data.delivery_fee)+"\n💵 TOTAL: "+money(data.total)+"\n\n"+
+    "💳 Pagamento: "+customer.payment+(customer.change?"\n💸 Troco para: "+customer.change:"")+
+    (customer.notes?"\n📝 Observações: "+customer.notes:"")+"\n\n❤️ Obrigado pela preferência!";
    window.location.href="https://wa.me/"+STORE_WHATSAPP+"?text="+encodeURIComponent(whatsappMessage);
    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});
    setNotice("Pedido #"+data.order_number+" registrado com sucesso. Abrindo o WhatsApp da loja...");
