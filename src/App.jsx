@@ -53,7 +53,8 @@ export default function App(){
  useEffect(()=>localStorage.setItem("bomjardim_delivery",JSON.stringify(delivery)),[delivery]);
  useEffect(()=>{let alive=true;(async()=>{try{const result=await loadPublicCatalog();if(!alive)return;if(result.products.length){setProducts(result.products);setStoreInfo(result.store)}setCatalogLoaded(true)}catch(error){if(alive)setNotice("Não foi possível atualizar o catálogo online. Exibindo a demonstração.");} })();return()=>{alive=false}},[]);
  useEffect(()=>{if(!session||!profile?.store_id)return;let alive=true;(async()=>{setDataLoading(true);try{const [dbProducts,dbOrders]=await Promise.all([loadAdminCatalog(profile.store_id),loadAdminOrders(profile.store_id)]);if(!alive)return;setProducts(dbProducts);setOrders(dbOrders);if(dbProducts.length===0)setNotice("Banco conectado. Cadastre o primeiro produto oficial da loja.");}catch(error){if(alive)setNotice("Erro ao carregar os dados da loja: "+(error.message||"verifique as permissões do Supabase."));}finally{if(alive)setDataLoading(false)}})();return()=>{alive=false}},[session,profile?.store_id]);
- const visible=useMemo(()=>products.filter(p=>p.available&&(category==="Todos"||p.category===category)&&p.name.toLowerCase().includes(search.toLowerCase())),[products,category,search]);
+ const catalogProducts=products.length?products:initialProducts;
+ const visible=useMemo(()=>catalogProducts.filter(p=>p.available&&(category==="Todos"||p.category===category)&&p.name.toLowerCase().includes(search.toLowerCase())),[catalogProducts,category,search]);
  const count=cart.reduce((s,p)=>s+p.qty,0),subtotal=cart.reduce((s,p)=>s+p.price*p.qty,0);
  const fee=delivery.mode==="fixed"?Number(delivery.fee||0):(delivery.mode==="freeOver"&&subtotal>=Number(delivery.freeOver||0)?0:Number(delivery.fee||0));
  const total=subtotal+fee;
