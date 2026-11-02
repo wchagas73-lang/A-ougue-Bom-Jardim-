@@ -131,13 +131,14 @@ export async function saveAdminProduct(product, storeId) {
     price: Number(product.price),
     unit: product.unit === "un." ? "un." : "kg",
     available: product.available !== false,
+    image_url: product.imageUrl || null,
     active: true,
   };
   const query = product.id && typeof product.id === "string"
     ? supabase.from("products").update(payload).eq("id", product.id).eq("store_id", storeId)
     : supabase.from("products").insert(payload);
   const { data, error } = await query
-    .select("id,name,description,price,unit,available,categories(name)")
+    .select("id,name,description,price,unit,image_url,available,categories(name)")
     .single();
   if (error) throw error;
   return {
@@ -147,6 +148,7 @@ export async function saveAdminProduct(product, storeId) {
     price: Number(data.price),
     unit: data.unit,
     note: data.description || "",
+    imageUrl: data.image_url || "",
     available: data.available,
     featured: false,
   };
