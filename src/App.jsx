@@ -35,6 +35,7 @@ const baseCategories = ["Todos","Boi","Porco","Aves","Churrasco","Diversos"];
 const money = n => Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const load = (key,fallback) => { try { const v=localStorage.getItem(key); return v?JSON.parse(v):fallback; } catch { return fallback; } };
 
+const demoMeatImage = category => ({Boi:"https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=700",Porco:"https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=700",Frango:"https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=700","Kit Churrasco":"https://images.unsplash.com/photo-1558030006-450675393462?w=700",Diversos:"https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=700"})[category]||"https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=700";
 export default function App(){
  const [products,setProducts]=useState(()=>load("bomjardim_products",initialProducts));
  const [orders,setOrders]=useState(()=>load("bomjardim_orders",[]));
@@ -167,23 +168,29 @@ export default function App(){
  async function updateStatus(id,status){try{if(!String(id).startsWith("DEMO-"))await updateAdminOrderStatus(id,status);const changedAt=new Date().toISOString();setOrders(old=>{const next=old.map(o=>o.id===id?{...o,status,statusHistory:[...(o.statusHistory||[{status:o.status,at:o.createdAt}]),{status,at:changedAt}]}:o);localStorage.setItem("bomjardim_orders",JSON.stringify(next));return next});setNotice("Status atualizado. Horário registrado no histórico desta demonstração.")}catch(error){setNotice("Não foi possível atualizar o pedido: "+(error.message||"erro de conexão."))}}
  async function handleSavePromotions(){
   if(savingPromo)return;
-  const chosen=adminCatalogProducts.filter(p=>promoSelections[p.id]?.selected);
+  const chosen=[...adminCatalogProducts,...initialProducts.filter(d=>!adminCatalogProducts.some(p=>p.name.toLowerCase()===d.name.toLowerCase()))].filter(p=>promoSelections[p.id]?.selected);
   if(!profile?.store_id){setNotice("Sua sessão expirou. Entre novamente no painel.");return}
-  if(!chosen.length){setNotice(adminCatalogProducts.length?"Selecione pelo menos um produto.":"O catálogo oficial ainda não carregou. Atualize a página ou verifique o acesso ao banco.");return}
+  if(!chosen.length){setNotice("Selecione pelo menos um produto no catálogo.");return}
   if(!promoDraft.title.trim()){setNotice("Informe o título da promoção.");return}
   if(chosen.some(p=>promoSelections[p.id].price===""||!Number.isFinite(Number(promoSelections[p.id].price))||Number(promoSelections[p.id].price)<0||Number(promoSelections[p.id].price)>Number(p.price))){setNotice("Confira os preços promocionais dos produtos selecionados.");return}
   if(promoDraft.startsAt&&promoDraft.endsAt&&new Date(promoDraft.endsAt)<=new Date(promoDraft.startsAt)){setNotice("O término precisa ser depois do início.");return}
-  setSavingPromo(true);setNotice("Salvando promoção no banco...");
+  setSavingPromo(true);setNotice("Salvando produtos e promoção...");
   try{
-   const saved=[];
-   for(const product of chosen){
+   const savedProducts=[];
+   const savedPromos=[];
+   for(const selected of chosen){
+    // Itens ilustrativos também viram produtos de demonstração reais no banco,
+    // para que a promoção apareça no cardápio público.
+    const product=typeof selected.id==="string"
+      ? selected
+      : await saveAdminProduct({...selected,imageUrl:selected.imageUrl||demoMeatImage(selected.category)},profile.store_id);
+    savedProducts.push(product);
     const existing=adminPromos.find(p=>String(p.productId)===String(product.id));
-    saved.push(await saveAdminPromotion({id:existing?.id,productId:product.id,title:promoDraft.title,description:"",icon:promoSelections[product.id]?.icon||"🔥",promotionalPrice:promoSelections[product.id].price,oldPrice:product.price,startsAt:promoDraft.startsAt,endsAt:promoDraft.endsAt,active:promoDraft.active},profile.store_id));
+    savedPromos.push(await saveAdminPromotion({id:existing?.id,productId:product.id,title:promoDraft.title,description:"",icon:promoSelections[selected.id]?.icon||"🔥",promotionalPrice:promoSelections[selected.id].price,oldPrice:product.price,startsAt:promoDraft.startsAt,endsAt:promoDraft.endsAt,active:promoDraft.active},profile.store_id));
    }
-   const freshAdmin=await loadAdminPromotions(profile.store_id);
-   const freshPublic=await loadPublicPromotions();
-   setAdminPromos(freshAdmin);setPromos(freshPublic);setPromoSelections({});
-   setNotice("Promoção salva e confirmada! "+saved.length+" produto(s) enviado(s) ao cardápio.");
+   const [freshCatalog,freshAdmin,freshPublic]=await Promise.all([loadAdminCatalog(profile.store_id),loadAdminPromotions(profile.store_id),loadPublicPromotions()]);
+   setProducts(freshCatalog);setAdminPromos(freshAdmin);setPromos(freshPublic);setPromoSelections({});
+   setNotice("Promoção salva! "+savedPromos.length+" produto(s) publicados no cardápio do cliente.");
   }catch(error){setNotice("Não foi possível salvar a promoção: "+(error?.message||"erro inesperado no banco."));}
   finally{setSavingPromo(false);}
  }
@@ -203,7 +210,7 @@ export default function App(){
   <section className="catalog" id="catalog"><div className="section-heading"><div><span className="eyebrow">NOSSO CATÁLOGO</span><h2>Escolha seus produtos</h2></div><span className="catalog-count">{visible.length} produtos</span></div>
   <label className="search-box"><Search size={19}/><input type="search" list="catalog-product-suggestions" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar carne, corte ou produto..." autoComplete="off"/><datalist id="catalog-product-suggestions">{catalogProducts.filter(p=>p.available).map(p=><option key={p.id} value={p.name}/>)}</datalist></label>
   <nav className="categories">{categories.map(c=><button key={c} className={category===c?"active":""} onClick={()=>setCategory(c)}>{c}</button>)}</nav>
-  <div className="product-grid">{visible.map(p=>{const selected=cart.find(item=>item.id===p.id);const step=p.unit==="kg"?0.5:1;return <article className={"product-card "+(activePromoByProduct.has(String(p.id))?"product-card-promo":"")} key={p.id}><div className="product-art"><Beef size={38}/><span>{p.category}</span>{activePromoByProduct.has(String(p.id))&&<i>🔥 Promoção</i> }</div><div className="product-info"><span className="product-category">{p.category}</span><h3>{p.name}</h3><p>{p.note}</p><div className="product-bottom">{activePromoByProduct.has(String(p.id))?<strong><del>{money(p.price)}</del> {money(priceOf(p))} <small>/{p.unit}</small></strong>:<strong>{money(p.price)} <small>/{p.unit}</small></strong>}{selected?<div className="qty catalog-qty"><button aria-label={"Diminuir "+p.name} onClick={()=>qty(p.id,-step)}><Minus size={15}/></button><b>{selected.qty.toLocaleString("pt-BR")} {p.unit}</b><button aria-label={"Aumentar "+p.name} onClick={()=>qty(p.id,step)}><Plus size={15}/></button></div>:<button aria-label={"Adicionar "+p.name} onClick={()=>add(p)}><Plus size={18}/></button>}</div></div></article>})}</div>
+  <div className="product-grid">{visible.map(p=>{const selected=cart.find(item=>item.id===p.id);const step=p.unit==="kg"?0.5:1;return <article className={"product-card "+(activePromoByProduct.has(String(p.id))?"product-card-promo":"")} key={p.id}><div className="product-art">{p.imageUrl?<img src={p.imageUrl} alt={p.name}/>:<img src={demoMeatImage(p.category)} alt={"Imagem ilustrativa de "+p.name}/>}<span>{p.category}</span>{activePromoByProduct.has(String(p.id))&&<i>{activePromoByProduct.get(String(p.id))?.icon||"🔥"} Promoção</i> }</div><div className="product-info"><span className="product-category">{p.category}</span><h3>{p.name}</h3><p>{p.note}</p><div className="product-bottom">{activePromoByProduct.has(String(p.id))?<strong><del>{money(p.price)}</del> {money(priceOf(p))} <small>/{p.unit}</small></strong>:<strong>{money(p.price)} <small>/{p.unit}</small></strong>}{selected?<div className="qty catalog-qty"><button aria-label={"Diminuir "+p.name} onClick={()=>qty(p.id,-step)}><Minus size={15}/></button><b>{selected.qty.toLocaleString("pt-BR")} {p.unit}</b><button aria-label={"Aumentar "+p.name} onClick={()=>qty(p.id,step)}><Plus size={15}/></button></div>:<button aria-label={"Adicionar "+p.name} onClick={()=>add(p)}><Plus size={18}/></button>}</div></div></article>})}</div>
   <p className="price-note">{catalogLoaded&&products.some(p=>typeof p.id==="string")?"Catálogo atualizado pela loja. Preços e disponibilidade podem mudar sem aviso.":"Catálogo de demonstração: os itens ainda não foram cadastrados no banco oficial."}</p></section></main><footer><strong>Açougue Bom Jardim</strong><span>Cardápio online • Demonstração comercial</span></footer></>:!session?<main className="admin-layout"><section className="admin-content"><div className="admin-card settings-card" style={{maxWidth:460,margin:"50px auto",padding:28}}><span className="brand-mark"><LockKeyhole/></span><h2 style={{marginTop:16}}>Acesso da equipe</h2><p>Entre com o e-mail e a senha cadastrados pelo responsável da loja.</p>{notice&&<div className="notice">{notice}</div>}<label>E-mail<input type="email" autoComplete="username" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} placeholder="E-mail de acesso"/></label><label>Senha<input type="password" autoComplete="current-password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} placeholder="Sua senha"/></label><button className="primary-action" style={{width:"100%",marginTop:16}} onClick={signIn} disabled={authLoading}>{authLoading?"Verificando...":"Entrar no painel"}</button><button className="secondary-action" style={{width:"100%",marginTop:8}} onClick={()=>setArea("store")}>Voltar ao cardápio</button><div className="tip-box">O acesso é validado pelo Supabase. Não compartilhe sua senha por mensagem.</div></div></section></main>:<main className="admin-layout">
    <aside className="admin-sidebar"><div className="admin-title"><span className="brand-mark"><Beef/></span><div><b>Painel da loja</b><small>Açougue Bom Jardim</small></div></div>
     {[["overview","Visão geral",LayoutDashboard],["products","Produtos",Package],["orders","Pedidos",ClipboardList],...(profile?.role==="owner"?[["promos","Promoções",Tag]]:[]),["delivery","Entrega",Truck],["settings","Configurações",Settings]].map(([id,label,Icon])=><button key={id} className={adminTab===id?"selected":""} onClick={()=>{setAdminTab(id);setEditing(null)}}><Icon size={18}/>{label}{id==="orders"&&orders.length>0&&<b className="nav-count">{orders.length}</b>}</button>)}
