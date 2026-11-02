@@ -56,6 +56,66 @@ export async function loadAdminCatalog(storeId) {
   }));
 }
 
+
+export async function loadPublicPromotions(storeId) {
+  if (!supabase || !storeId) return [];
+  const now = new Date().toISOString();
+  const { data, error } = await supabase.from("promotions")
+    .select("id,product_id,old_price,promotional_price,title,description,icon,starts_at,ends_at,active")
+    .eq("store_id", storeId).eq("active", true)
+    .or(`starts_at.is.null,starts_at.lte.${now}`)
+    .or(`ends_at.is.null,ends_at.gte.${now}`);
+  if (error) throw error;
+  return (data || []).map(p => ({
+    id:p.id, productId:p.product_id, oldPrice:Number(p.old_price),
+    promotionalPrice:Number(p.promotional_price), title:p.title || "Oferta especial",
+    description:p.description || "", icon:p.icon || "🔥",
+    startsAt:p.starts_at, endsAt:p.ends_at
+  }));
+}
+
+export async function loadAdminPromotions(storeId) {
+  if (!supabase || !storeId) throw new Error("Sessão da loja não encontrada.");
+  const { data, error } = await supabase.from("promotions")
+    .select("id,product_id,old_price,promotional_price,title,description,icon,starts_at,ends_at,active")
+    .eq("store_id", storeId).order("starts_at", {ascending:true});
+  if (error) throw error;
+  return (data || []).map(p => ({
+    id:p.id, productId:p.product_id, oldPrice:Number(p.old_price),
+    promotionalPrice:Number(p.promotional_price), title:p.title || "Oferta especial",
+    description:p.description || "", icon:p.icon || "🔥",
+    startsAt:p.starts_at ? p.starts_at.slice(0,16) : "",
+    endsAt:p.ends_at ? p.ends_at.slice(0,16) : "", active:p.active
+  }));
+}
+
+export async function saveAdminPromotion(promo, storeId) {
+  if (!supabase || !storeId) throw new Error("Sessão da loja não encontrada.");
+  const productPrice = Number(promo.oldPrice);
+  const salePrice = Number(promo.promotionalPrice);
+  if (!promo.productId || !Number.isFinite(salePrice) || salePrice < 0 || salePrice > productPrice)
+    throw new Error("Escolha um produto e informe um preço promocional válido, menor ou igual ao preço normal.");
+  const payload = {
+    store_id:storeId, product_id:promo.productId, old_price:productPrice,
+    promotional_price:salePrice, title:String(promo.title || "Oferta especial").trim(),
+    description:String(promo.description || "").trim(), icon:promo.icon || "🔥",
+    starts_at:promo.startsAt ? new Date(promo.startsAt).toISOString() : new Date().toISOString(),
+    ends_at:promo.endsAt ? new Date(promo.endsAt).toISOString() : null,
+    active:promo.active !== false
+  };
+  const query = promo.id && typeof promo.id === "string"
+    ? supabase.from("promotions").update(payload).eq("id",promo.id).eq("store_id",storeId)
+    : supabase.from("promotions").insert(payload);
+  const {data,error}=await query.select("id").single();
+  if(error) throw error;
+  return {...promo,id:data.id,oldPrice:productPrice,promotionalPrice:salePrice};
+}
+
+export async function deleteAdminPromotion(id, storeId) {
+  const {error}=await supabase.from("promotions").delete().eq("id",id).eq("store_id",storeId);
+  if(error) throw error;
+}
+
 export async function saveAdminProduct(product, storeId) {
   if (!supabase || !storeId) throw new Error("Sessão da loja não encontrada.");
   const category = String(product.category || "Diversos").trim();
