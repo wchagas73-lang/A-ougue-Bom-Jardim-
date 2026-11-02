@@ -47,7 +47,7 @@ const PRODUCT_IMAGES = [
   [/pão de alho/,"https://images.unsplash.com/photo-1619531040576-f94167406619?w=900"],
   [/linguiça/,"https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=900"],
   [/costelinha/,"https://images.unsplash.com/photo-1544025162-d76694265947?w=900"],
-  [/bacon/,"https://images.unsplash.com/photo- bacon?w=900"],
+  [/bacon/,"https://images.unsplash.com/photo-1524438418049-ab2acb7aa48f?w=900"],
   [/kit de churrasco|kit churrasco/,"https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=900"]
 ];
 const productImage = product => {
