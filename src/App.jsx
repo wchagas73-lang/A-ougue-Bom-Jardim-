@@ -31,7 +31,7 @@ const initialProducts = [
   {id:24,name:"Pão de alho",category:"Diversos",price:12.90,unit:"un.",note:"Acompanhamento para churrasco",available:true},
   {id:25,name:"Queijo coalho",category:"Diversos",price:29.90,unit:"kg",note:"Ótimo na churrasqueira",available:true}
 ];
-const baseCategories = ["Todos","Boi","Porco","Frango","Kit Churrasco","Diversos"];
+const baseCategories = ["Todos","Boi","Porco","Aves","Churrasco","Diversos"];
 const money = n => Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const load = (key,fallback) => { try { const v=localStorage.getItem(key); return v?JSON.parse(v):fallback; } catch { return fallback; } };
 
@@ -86,8 +86,9 @@ export default function App(){
  const catalogProducts=products.length?products:initialProducts;
  const activePromoByProduct=useMemo(()=>new Map(promos.map(p=>[String(p.productId),p])),[promos]);
  const categories=useMemo(()=>[...(promos.length?["Promoções"]:[]),...baseCategories],[promos]);
- const visible=useMemo(()=>catalogProducts.filter(p=>p.available&&(category==="Todos"||(category==="Promoções"?activePromoByProduct.has(String(p.id)):p.category===category))&&p.name.toLowerCase().includes(search.toLowerCase())),[catalogProducts,category,search,activePromoByProduct]);
+ const visible=useMemo(()=>catalogProducts.filter(p=>p.available&&(category==="Todos"||(category==="Promoções"?activePromoByProduct.has(String(p.id)):category==="Aves"?p.category==="Frango":category==="Churrasco"?p.category==="Kit Churrasco":p.category===category))&&p.name.toLowerCase().includes(search.toLowerCase())),[catalogProducts,category,search,activePromoByProduct]);
  const priceOf=p=>Number(activePromoByProduct.get(String(p.id))?.promotionalPrice??p.price);
+ useEffect(()=>{if(promos.length&&category==="Todos")setCategory("Promoções")},[promos,category]);
  const count=cart.reduce((s,p)=>s+p.qty,0),subtotal=cart.reduce((s,p)=>s+priceOf(p)*p.qty,0);
  const fee=delivery.mode==="fixed"?Number(delivery.fee||0):(delivery.mode==="freeOver"&&subtotal>=Number(delivery.freeOver||0)?0:Number(delivery.fee||0));
  const total=subtotal+fee;
