@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Beef, Search, ShoppingBag, Plus, Minus, X, Clock3, MapPin, ShieldCheck, LayoutDashboard, Package, ClipboardList, Settings, Tag, Pencil, Trash2, Eye, EyeOff, TrendingUp, Users, Truck, CheckCircle2, LogOut, ArrowLeft, Save, ImagePlus, LockKeyhole } from "lucide-react";
 import { supabase } from "./lib/supabase";
-import { loadPublicCatalog, loadPublicPromotions, loadAdminPromotions, saveAdminPromotion, deleteAdminPromotion, loadAdminCatalog, saveAdminProduct, deleteAdminProduct, loadAdminOrders, updateAdminOrderStatus } from "./lib/storeData";
+import { loadPublicCatalog, loadPublicPromotions, loadAdminPromotions, saveAdminPromotions, deleteAdminPromotion, loadAdminCatalog, saveAdminProduct, deleteAdminProduct, loadAdminOrders, updateAdminOrderStatus } from "./lib/storeData";
 
 const initialProducts = [
   {id:1,name:"Acém",category:"Boi",price:34.90,unit:"kg",note:"Ideal para panela e carne moída",available:true,featured:true},
@@ -203,86 +203,49 @@ export default function App(){
  async function updateStatus(id,status){try{if(!String(id).startsWith("DEMO-"))await updateAdminOrderStatus(id,status);const changedAt=new Date().toISOString();setOrders(old=>{const next=old.map(o=>o.id===id?{...o,status,statusHistory:[...(o.statusHistory||[{status:o.status,at:o.createdAt}]),{status,at:changedAt}]}:o);localStorage.setItem("bomjardim_orders",JSON.stringify(next));return next});setNotice("Status atualizado. Horário registrado no histórico desta demonstração.")}catch(error){setNotice("Não foi possível atualizar o pedido: "+(error.message||"erro de conexão."))}}
  async function handleSavePromotions(){
   if(savingPromo)return;
-  const sourceProducts=promoCatalog.length?promoCatalog:adminCatalogProducts;
-  const allProducts=sourceProducts.filter((product,index,array)=>array.findIndex(item=>String(item.id)===String(product.id))===index);
-  const chosen=allProducts.filter(p=>promoSelections[String(p.id)]?.selected);
-  if(!profile?.store_id){setNotice("Sua sessão expirou. Entre novamente no painel.");return}
-  if(profile.role!=="owner"){setNotice("Somente o acesso do proprietário pode cadastrar ou alterar promoções. Entre com a conta proprietária da loja.");return}
-  if(!chosen.length){setNotice("Selecione pelo menos um produto no catálogo.");return}
-  if(!promoDraft.title.trim()){setNotice("Informe o título da promoção.");return}
-  if(!promoDraft.startsAt||!promoDraft.endsAt){setNotice("Informe a data e o horário de início e de término da promoção.");return}
-  const startsAt=new Date(promoDraft.startsAt),endsAt=new Date(promoDraft.endsAt);
-  if(!Number.isFinite(startsAt.getTime())||!Number.isFinite(endsAt.getTime())||endsAt<=startsAt){setNotice("Confira as datas: o término precisa ser posterior ao início.");return}
-  const selectionFor=id=>promoSelections[String(id)]||{};
-  const invalid=chosen.find(p=>{
-   const raw=String(selectionFor(p.id).price??"").trim().replace(",",".");
-   const price=Number(raw);
-   return raw===""||!Number.isFinite(price)||price<0||Number(p.price)<=0||price>Number(p.price);
-  });
-  if(invalid){setNotice("Confira o preço promocional de "+invalid.name+". Ele precisa ser válido e não pode ultrapassar o preço normal de "+money(invalid.price)+".");return}
-
   setSavingPromo(true);
-  setNotice("Salvando as promoções dos produtos selecionados. Aguarde...");
-  const successfulIds=[];
-  const failures=[];
+  setNotice("Preparando o lote de promoções...");
   try{
-   const [loadedCatalog,currentPromos]=await Promise.all([
-    loadAdminCatalog(profile.store_id),
-    loadAdminPromotions(profile.store_id)
-   ]);
-   let currentCatalog=[...loadedCatalog];
-   setProducts(old=>[...loadedCatalog,...old.filter(p=>!loadedCatalog.some(x=>String(x.id)===String(p.id)))]);
-   const results=await Promise.allSettled(chosen.map(async selected=>{
+   if(!profile?.store_id)throw new Error("Sua sessão expirou. Entre novamente no painel.");
+   if(profile.role!=="owner")throw new Error("Somente o proprietário pode cadastrar promoções.");
+   const sourceProducts=promoCatalog.length?promoCatalog:adminCatalogProducts;
+   const allProducts=sourceProducts.filter((product,index,array)=>array.findIndex(item=>String(item.id)===String(product.id))===index);
+   const chosen=allProducts.filter(p=>promoSelections[String(p.id)]?.selected);
+   if(!chosen.length)throw new Error("Selecione pelo menos um produto no catálogo.");
+   if(!String(promoDraft.title||"").trim())throw new Error("Informe o título da promoção.");
+   if(!promoDraft.startsAt||!promoDraft.endsAt)throw new Error("Informe data e horário de início e término.");
+   const startsAt=new Date(promoDraft.startsAt),endsAt=new Date(promoDraft.endsAt);
+   if(!Number.isFinite(startsAt.getTime())||!Number.isFinite(endsAt.getTime())||endsAt<=startsAt)throw new Error("O término precisa ser posterior ao início.");
+   setNotice("Conferindo "+chosen.length+" produto(s)...");
+   const currentCatalog=await loadAdminCatalog(profile.store_id);
+   const prepared=[];
+   for(const selected of chosen){
     const nameKey=selected.name.trim().toLowerCase();
     let product=(typeof selected.id==="string"&&/^[0-9a-f-]{36}$/i.test(selected.id))
       ? currentCatalog.find(p=>String(p.id)===String(selected.id))||selected
       : currentCatalog.find(p=>p.name.trim().toLowerCase()===nameKey);
     if(!product){
      product=await saveAdminProduct({...selected,imageUrl:selected.imageUrl||demoMeatImage(selected.category)},profile.store_id);
-     currentCatalog=[...currentCatalog.filter(p=>p.name.trim().toLowerCase()!==nameKey),product];
+     currentCatalog.push(product);
     }
-    const existing=currentPromos.find(p=>String(p.productId)===String(product.id));
-    const saved=await saveAdminPromotion({
-     id:existing?.id,productId:product.id,title:promoDraft.title.trim(),description:"",
-     icon:selectionFor(selected.id).icon||"🔥",
-     promotionalPrice:String(selectionFor(selected.id).price).trim().replace(",","."),
-     oldPrice:product.price,startsAt:promoDraft.startsAt,endsAt:promoDraft.endsAt,active:true
-    },profile.store_id);
-    return {selectedId:String(selected.id),productName:selected.name,saved};
-   }));
-   let updatedPromos=[...currentPromos];
-   results.forEach((result,index)=>{
-    if(result.status==="fulfilled"){
-     const {selectedId,saved}=result.value;
-     updatedPromos=[...updatedPromos.filter(p=>String(p.productId)!==String(saved.productId)),saved];
-     successfulIds.push(selectedId);
-    }else{
-     const reason=result.reason;
-     failures.push(chosen[index].name+": "+(reason?.message||"erro ao salvar este item"));
-    }
-   });
-   setAdminPromos(updatedPromos);
-   setPromoSelections(old=>Object.fromEntries(Object.entries(old).filter(([id,value])=>value.selected&&!successfulIds.includes(String(id)))));
-   try{
-    const [freshCatalog,freshAdmin,freshPublic]=await Promise.all([
-     loadAdminCatalog(profile.store_id),loadAdminPromotions(profile.store_id),loadPublicPromotions()
-    ]);
-    setProducts(old=>[...freshCatalog,...old.filter(p=>!freshCatalog.some(f=>f.name.trim().toLowerCase()===p.name.trim().toLowerCase()))]);
-    setAdminPromos(freshAdmin);
-    setPromos(freshPublic);
-   }catch(refreshError){
-    if(!failures.length)failures.push("Os itens foram gravados, mas a atualização da tela falhou. Atualize a página para conferir.");
+    const selection=promoSelections[String(selected.id)]||{};
+    const raw=String(selection.price??"").trim().replace(",",".");
+    const price=Number(raw);
+    if(raw===""||!Number.isFinite(price)||price<0||Number(product.price)<=0||price>Number(product.price))throw new Error("Preço promocional inválido para "+selected.name+". Confira o valor.");
+    prepared.push({productId:product.id,productName:product.name,oldPrice:product.price,promotionalPrice:price,title:promoDraft.title.trim(),description:"",icon:selection.icon||"🔥",startsAt:promoDraft.startsAt,endsAt:promoDraft.endsAt,active:true});
    }
-   if(failures.length){
-    setNotice(successfulIds.length+" de "+chosen.length+" produto(s) salvos. Os que falharam continuam selecionados: "+failures.slice(0,5).join(" | ")+(failures.length>5?" | e mais "+(failures.length-5)+" item(ns).":""));
-   }else{
-    setNotice("Promoções salvas! "+successfulIds.length+" produto(s) receberam o mesmo período. Você pode cadastrar novas promoções quando quiser, com outras datas e horários.");
-   }
+   setNotice("Salvando "+prepared.length+" promoção(ões) juntas no banco...");
+   const saved=await saveAdminPromotions(prepared,profile.store_id);
+   const savedIds=new Set(chosen.map(p=>String(p.id)));
+   setPromoSelections(old=>Object.fromEntries(Object.entries(old).filter(([id,value])=>value.selected&&!savedIds.has(String(id)))));
+   const [freshCatalog,freshAdmin,freshPublic]=await Promise.all([loadAdminCatalog(profile.store_id),loadAdminPromotions(profile.store_id),loadPublicPromotions()]);
+   setProducts(old=>[...freshCatalog,...old.filter(p=>!freshCatalog.some(f=>String(f.id)===String(p.id)))]);
+   setAdminPromos(freshAdmin);
+   setPromos(freshPublic);
+   setNotice("Pronto! "+saved.length+" promoção(ões) salvas. Selecione outro grupo e outro período quando quiser; as anteriores foram preservadas.");
   }catch(error){
-   setNotice("Não foi possível iniciar o salvamento: "+(error?.message||"verifique a conexão e as permissões do banco de dados."));
-  }finally{
-   setSavingPromo(false);
-  }
+   setNotice("Não foi possível salvar as promoções: "+(error?.message||"erro inesperado. Tente novamente."));
+  }finally{setSavingPromo(false)}
  }
  async function handleProductImage(file){
   if(!file)return;
