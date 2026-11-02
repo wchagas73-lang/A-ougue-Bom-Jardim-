@@ -75,7 +75,14 @@ export default function App(){
    const demoOrder={id:"DEMO-"+demoNumber,createdAt,estimatedDeliveryMinutes:estimatedTime,customer:{...customer},items:cart.map(p=>({...p})),subtotal,fee,total,payment:customer.payment,status:"Novo",statusHistory:[{status:"Novo",at:createdAt}]};
    const nextOrders=[demoOrder,...orders];setOrders(nextOrders);localStorage.setItem("bomjardim_orders",JSON.stringify(nextOrders));
    const orderLines=cart.map(p=>"• "+p.name+"\n  "+p.qty+" "+p.unit+" × "+money(p.price)+"/"+p.unit+" = "+money(p.price*p.qty)).join("\n\n");
-   const whatsappMessage="PEDIDO DE DEMONSTRAÇÃO - AÇOUGUE BOM JARDIM\nPedido teste #"+demoNumber+"\nPrevisão estimada: "+estimatedTime+" após a confirmação do pedido.\n\nCliente: "+customer.name+"\nTelefone: "+customer.phone+"\nEndereço: "+customer.address+"\nPagamento: "+customer.payment+(customer.change?"\nTroco para: "+customer.change:"")+(customer.notes?"\nObservações: "+customer.notes:"")+"\n\nITENS\n"+orderLines+"\n\nSubtotal: "+money(subtotal)+"\nEntrega: "+money(fee)+"\nTotal: "+money(total)+"\n\nEste é um pedido fictício para demonstração.";
+   const whatsappMessage="🥩 AÇOUGUE BOM JARDIM\\n"+
+    "📦 NOVO PEDIDO DE DEMONSTRAÇÃO #"+demoNumber+"\\n"+
+    "🕒 Recebido em: "+new Date(createdAt).toLocaleString("pt-BR")+"\\n\\n"+
+    "👤 CLIENTE\\n"+customer.name+"\\n📞 "+customer.phone+"\\n📍 "+customer.address+"\\n\\n"+
+    "🛒 PRODUTOS\\n"+orderLines+"\\n\\n"+
+    "💰 RESUMO DO PEDIDO\\nProdutos: "+money(subtotal)+"\\n🛵 Entrega: "+money(fee)+"\\n💵 TOTAL: "+money(total)+"\\n\\n"+
+    "💳 Pagamento: "+customer.payment+(customer.change?"\\n💸 Troco para: "+customer.change:"")+
+    (customer.notes?"\\n📝 Observações: "+customer.notes:"")+"\\n\\n❤️ Obrigado pela preferência!\\nPedido fictício para demonstração.";
    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});
    setNotice("Pedido de demonstração criado! Abrindo o WhatsApp da loja.");
    window.location.href="https://wa.me/"+STORE_WHATSAPP+"?text="+encodeURIComponent(whatsappMessage);
