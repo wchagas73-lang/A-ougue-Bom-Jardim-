@@ -116,9 +116,6 @@ Deno.serve(async (req) => {
     });
     const subtotal = Math.round(orderItems.reduce((sum: number, item: any) => sum + item.line_total, 0) * 100) / 100;
     const minimum = Number(settings?.minimum_order ?? 0);
-    if (payment === "cash" && cashReceived !== null && (!Number.isFinite(cashReceived) || cashReceived < subtotal + deliveryFee)) {
-      return json({ error: "O valor recebido precisa ser igual ou maior que o total do pedido." }, 400);
-    }
     if (subtotal < minimum) {
       return json({ error: `O pedido mínimo é R$ ${minimum.toFixed(2).replace(".", ",")}.` }, 409);
     }
@@ -130,6 +127,9 @@ Deno.serve(async (req) => {
     }
     deliveryFee = Math.max(0, Math.round(deliveryFee * 100) / 100);
     const total = Math.round((subtotal + deliveryFee) * 100) / 100;
+    if (payment === "cash" && cashReceived !== null && (!Number.isFinite(cashReceived) || cashReceived < total)) {
+      return json({ error: "O valor recebido precisa ser igual ou maior que o total do pedido." }, 400);
+    }
 
     const { data: order, error: orderError } = await db
       .from("orders")
