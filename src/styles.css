@@ -409,3 +409,6 @@ td{border-color:var(--line)}
 .order-detail-summary>div{display:grid;gap:5px}
 .order-detail-summary>div>small{font-size:10px;color:#788073}
 @media(max-width:520px){.order-card-compact{padding:11px 12px!important;margin:8px 0!important}.order-compact-customer>b{font-size:13px}.order-compact-main>strong{font-size:13px}.order-compact-footer{gap:6px}.order-compact-footer time{font-size:9px}.order-card-compact .order-detail-button{font-size:10px;padding:5px 6px}}
+
+/* Editor de itens do pedido em preparação */
+.order-edit-box{display:grid;gap:13px;padding:14px;background:#f7f9f5;border:1px solid #e1e9dc;border-radius:12px}.order-edit-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(90px,1fr) auto;gap:9px;align-items:end}.order-edit-row label{display:grid;gap:6px;font-size:11px;font-weight:700;color:#596656}.order-edit-row select,.order-edit-row input{width:100%;min-width:0;min-height:42px;padding:9px;border:1px solid #dce3d8;border-radius:8px;background:#fff;color:#263629}.order-edit-total{margin:0;padding:12px;background:#fff;border-radius:8px;font-size:13px}.order-edit-actions{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0}.order-edit-box .edit-actions{display:flex;flex-wrap:wrap;gap:8px;margin:0}@media(max-width:520px){.order-edit-row{grid-template-columns:1fr 100px}.order-edit-row .text-action{grid-column:1/-1;justify-self:start}}
