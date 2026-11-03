@@ -197,7 +197,7 @@ export default function App(){
     "💰 RESUMO DO PEDIDO\nProdutos: "+money(data.subtotal)+"\n🛵 Entrega: "+money(data.delivery_fee)+"\n💵 TOTAL: "+money(data.total)+"\n\n"+
     "💳 Pagamento: "+customer.payment+(customer.payment==="Dinheiro"&&customer.change&&Number(String(customer.change).replace(",","."))>=Number(data.total)?"\n💵 Cliente paga com: "+money(Number(String(customer.change).replace(",",".")))+"\n💸 TROCO A DEVOLVER: "+money(Number(String(customer.change).replace(",","."))-Number(data.total)):"")+
     (customer.notes?"\n📝 Observações: "+customer.notes:"")+"\n\n❤️ Obrigado pela preferência!";
-   const whatsappNumber=String(data.store_whatsapp||STORE_WHATSAPP).replace(/\D/g,"");
+   const whatsappNumber=STORE_WHATSAPP;
    if(!whatsappNumber)throw new Error("O WhatsApp de recebimento da loja não está configurado.");
    const whatsappUrl="https://wa.me/"+whatsappNumber+"?text="+encodeURIComponent(whatsappMessage);
    if(whatsappWindow&&!whatsappWindow.closed){
