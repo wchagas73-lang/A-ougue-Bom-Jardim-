@@ -388,3 +388,24 @@ td{border-color:var(--line)}
  .order-history-event time{flex:1 1 100%;padding-left:2px}
  .order-detail-panel{padding:15px!important}
 }
+
+
+/* Lista compacta de pedidos: resumo no padrão da visão geral */
+.order-card-compact{padding:12px 15px!important;margin:9px 0!important;border-radius:11px!important;box-shadow:0 2px 9px #17291f08;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.order-card-compact:hover{border-color:#cbd8c8;box-shadow:0 4px 13px #17291f12}
+.order-compact-main{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.order-compact-customer{display:grid;gap:3px;min-width:0}
+.order-compact-customer>b{font-size:14px;line-height:1.3;overflow:hidden;text-overflow:ellipsis}
+.order-compact-customer>small{font-size:10px;color:#788073;line-height:1.35}
+.order-compact-main>strong{font-size:14px;white-space:nowrap}
+.order-compact-footer{display:flex;align-items:center;gap:9px;margin-top:8px;padding-top:7px;border-top:1px solid #edf0e9}
+.order-compact-footer time{font-size:10px;color:#7b8177;flex:1;line-height:1.3}
+.order-compact-footer .status{padding:5px 8px!important;font-size:10px!important}
+.order-card-compact .order-detail-button{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border:0;border-radius:7px;background:#f0f3ed;color:#344b39;font-size:11px;font-weight:700;white-space:nowrap}
+.order-card-compact .order-detail-button:hover{background:#e3ebdf}
+.order-detail-status-control{display:grid;gap:6px;flex:1 1 100%;font-size:11px;font-weight:700;color:#626d60}
+.order-detail-status-control select{width:100%;min-height:42px;padding:9px 11px;border:1px solid #dce3d8;border-radius:9px;background:#fff;color:#263629;font-weight:700}
+.order-detail-summary{display:flex;flex-wrap:wrap;align-items:center;gap:12px!important}
+.order-detail-summary>div{display:grid;gap:5px}
+.order-detail-summary>div>small{font-size:10px;color:#788073}
+@media(max-width:520px){.order-card-compact{padding:11px 12px!important;margin:8px 0!important}.order-compact-customer>b{font-size:13px}.order-compact-main>strong{font-size:13px}.order-compact-footer{gap:6px}.order-compact-footer time{font-size:9px}.order-card-compact .order-detail-button{font-size:10px;padding:5px 6px}}
