@@ -38,7 +38,7 @@ begin
   end if;
 
   v_name := nullif(trim(p_order_data->>'customer_name'), '');
-  v_phone := regexp_replace(coalesce(p_order_data->>'customer_phone',''), '\\D', '', 'g');
+  v_phone := regexp_replace(coalesce(p_order_data->>'customer_phone',''), '[^0-9]', '', 'g');
   v_address := nullif(trim(p_order_data->>'delivery_address'), '');
   v_payment := p_order_data->>'payment_method';
 
