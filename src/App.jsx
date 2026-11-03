@@ -161,14 +161,12 @@ export default function App(){
     (customer.notes?"\n📝 Observações: "+customer.notes:"")+"\n\n❤️ Obrigado pela preferência!\nPedido fictício para demonstração.";
    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",reference:"",payment:"Pix",change:"",notes:""});
    setNotice("Pedido de demonstração criado! Abrindo o WhatsApp da loja.");
-   window.location.href="https://wa.me/"+STORE_WHATSAPP+"?text="+encodeURIComponent(whatsappMessage);
+   window.location.assign("https://wa.me/"+STORE_WHATSAPP+"?text="+encodeURIComponent(whatsappMessage));
    return;
   }
   if(!supabase||!catalogLoaded||!cart.every(p=>typeof p.id==="string")){setNotice("O catálogo oficial ainda não está disponível para pedidos online. Aguarde a loja cadastrar os produtos no banco.");return}
   const paymentMap={"Pix":"pix","Dinheiro":"cash","Cartão de débito":"debit","Cartão de crédito":"credit"};
   setDataLoading(true);
-  // Abre a janela durante o toque do cliente para o navegador não bloquear o WhatsApp
-  const whatsappWindow=window.open("about:blank","_blank");
   try{
    const {data,error}=await supabase.functions.invoke("create-order",{body:{
     store_slug:"acougue-bom-jardim",
@@ -200,16 +198,11 @@ export default function App(){
    const whatsappNumber=STORE_WHATSAPP;
    if(!whatsappNumber)throw new Error("O WhatsApp de recebimento da loja não está configurado.");
    const whatsappUrl="https://wa.me/"+whatsappNumber+"?text="+encodeURIComponent(whatsappMessage);
-   if(whatsappWindow&&!whatsappWindow.closed){
-    whatsappWindow.location.href=whatsappUrl;
-   }else{
-    window.location.href=whatsappUrl;
-   }
+   window.location.assign(whatsappUrl);
    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",reference:"",payment:"Pix",change:"",notes:""});
    setNotice("Pedido #"+data.order_number+" registrado com sucesso. Abrindo o WhatsApp da loja...");
    setArea("store");
   }catch(error){
-   if(whatsappWindow&&!whatsappWindow.closed)whatsappWindow.close();
    setNotice("Não foi possível enviar o pedido: "+(error.message||"tente novamente."));
   }
   finally{setDataLoading(false)}
