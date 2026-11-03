@@ -187,7 +187,7 @@ export default function App(){
    const whatsappMessage="🥩 AÇOUGUE BOM JARDIM\n"+
     "📦 NOVO PEDIDO #"+data.order_number+"\n"+
     "🕒 Recebido em: "+receivedAt+"\n\n"+
-    "👤 CLIENTE\n"+customer.name+"\n📞 "+customer.phone+"\n📍 "+customer.address+"\n\n"+
+    "👤 CLIENTE\n"+customer.name+"\n📞 "+customer.phone+"\n📍 "+customer.address+(customer.reference?"\n📌 Referência: "+customer.reference:"")+"\n\n"+
     "🛒 PRODUTOS\n"+orderLines+"\n\n"+
     "💰 RESUMO DO PEDIDO\nProdutos: "+money(data.subtotal)+"\n🛵 Entrega: "+money(data.delivery_fee)+"\n💵 TOTAL: "+money(data.total)+"\n\n"+
     "💳 Pagamento: "+customer.payment+(customer.payment==="Dinheiro"&&customer.change&&Number(String(customer.change).replace(",","."))>=Number(data.total)?"\n💵 Cliente paga com: "+money(Number(String(customer.change).replace(",",".")))+"\n💸 TROCO A DEVOLVER: "+money(Number(String(customer.change).replace(",","."))-Number(data.total)):"")+
