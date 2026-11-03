@@ -30,6 +30,8 @@ Deno.serve(async (req) => {
     const customerName = String(body.customer_name ?? "").trim();
     const customerPhone = String(body.customer_phone ?? "").replace(/\D/g, "");
     const address = String(body.delivery_address ?? "").trim();
+    const reference = String(body.delivery_reference ?? "").trim().slice(0,300);
+    const cashReceived = body.cash_received == null ? null : Number(body.cash_received);
     const payment = String(body.payment_method ?? "");
     const notes = String(body.customer_notes ?? "").trim().slice(0, 1000);
     const items = body.items;
@@ -114,6 +116,9 @@ Deno.serve(async (req) => {
     });
     const subtotal = Math.round(orderItems.reduce((sum: number, item: any) => sum + item.line_total, 0) * 100) / 100;
     const minimum = Number(settings?.minimum_order ?? 0);
+    if (payment === "cash" && cashReceived !== null && (!Number.isFinite(cashReceived) || cashReceived < subtotal + deliveryFee)) {
+      return json({ error: "O valor recebido precisa ser igual ou maior que o total do pedido." }, 400);
+    }
     if (subtotal < minimum) {
       return json({ error: `O pedido mínimo é R$ ${minimum.toFixed(2).replace(".", ",")}.` }, 409);
     }
@@ -133,6 +138,9 @@ Deno.serve(async (req) => {
         customer_name: customerName,
         customer_phone: customerPhone,
         delivery_address: address,
+        delivery_reference: reference || null,
+        cash_received: payment === "cash" ? cashReceived : null,
+        change_due: payment === "cash" && cashReceived !== null ? Math.round((cashReceived - total) * 100) / 100 : 0,
         payment_method: payment,
         status: "received",
         subtotal,
