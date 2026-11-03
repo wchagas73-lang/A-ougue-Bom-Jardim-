@@ -168,7 +168,7 @@ export default function App(){
   const paymentMap={"Pix":"pix","Dinheiro":"cash","Cartão de débito":"debit","Cartão de crédito":"credit"};
   // Reserve a tab during the original click; mobile browsers can block redirects
   // to WhatsApp when they happen only after the asynchronous order request.
-  const whatsappWindow=window.open("about:blank","_blank");
+  const whatsappWindow=window.open("https://wa.me/"+STORE_WHATSAPP,"_blank");
   setDataLoading(true);
   try{
    const {data,error}=await supabase.functions.invoke("create-order",{body:{
