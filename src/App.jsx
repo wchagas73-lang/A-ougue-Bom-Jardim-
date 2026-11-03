@@ -269,19 +269,21 @@ export default function App(){
  }
  async function copyUpdatedOrder(){
   if(!selectedOrder)return;
-  const lines=(selectedOrder.items||[]).map(i=>"• "+i.name+" — "+i.qty+" "+i.unit+" × "+money(i.price)+" = "+money(i.total??Number(i.price||0)*Number(i.qty||0))).join("\\n");
+  const orderLines=(selectedOrder.items||[]).map(i=>"• "+i.name+"\\n  "+i.qty+" "+i.unit+" × "+money(i.price??i.unit_price??0)+"/"+i.unit+" = "+money(i.total??Number(i.price??i.unit_price??0)*Number(i.qty??i.quantity??0))).join("\\n\\n");
   const cash=Number(String(selectedOrder.customer?.cashReceived||"").replace(",","."));
   const change=Number.isFinite(cash)?Math.max(0,cash-Number(selectedOrder.total||0)):0;
-  const message="🥩 AÇOUGUE BOM JARDIM\\nPEDIDO ATUALIZADO "+(selectedOrder.displayId||selectedOrder.id)+
-   "\\n\\nCLIENTE\\n"+(selectedOrder.customer?.name||"")+"\\nTelefone: "+(selectedOrder.customer?.phone||"")+
-   "\\nEndereço: "+(selectedOrder.customer?.address||"")+
-   (selectedOrder.customer?.reference?"\\nReferência: "+selectedOrder.customer.reference:"")+
-   "\\n\\nITENS DO PEDIDO\\n"+lines+
-   "\\n\\nSubtotal: "+money(selectedOrder.subtotal)+"\\nEntrega: "+money(selectedOrder.fee)+"\\nTOTAL: "+money(selectedOrder.total)+
-   "\\nPagamento: "+(selectedOrder.payment||"")+
-   (selectedOrder.payment==="Dinheiro"&&selectedOrder.customer?.cashReceived?"\\nCliente paga com: "+money(cash)+"\\nTROCO A DEVOLVER: "+money(change):"")+
-   (selectedOrder.customer?.notes?"\\nObservações: "+selectedOrder.customer.notes:"")+
-   "\\n\\nConfira os dados e confirme se está tudo certo.";
+  const message="🥩 AÇOUGUE BOM JARDIM\\n"+
+   "📦 PEDIDO ATUALIZADO "+(selectedOrder.displayId||selectedOrder.id)+"\\n"+
+   "🕒 Atualizado em: "+new Date().toLocaleString("pt-BR")+"\\n\\n"+
+   "👤 CLIENTE\\n"+(selectedOrder.customer?.name||"")+"\\n📞 "+(selectedOrder.customer?.phone||"")+"\\n📍 "+(selectedOrder.customer?.address||"")+
+   (selectedOrder.customer?.reference?"\\n📌 Referência: "+selectedOrder.customer.reference:"")+"\\n\\n"+
+   "🛒 PRODUTOS\\n"+orderLines+"\\n\\n"+
+   "💰 RESUMO DO PEDIDO\\nProdutos: "+money(selectedOrder.subtotal)+"\\n🛵 Entrega: "+money(selectedOrder.fee)+"\\n💵 TOTAL: "+money(selectedOrder.total)+"\\n\\n"+
+   "💳 Pagamento: "+(selectedOrder.payment||"Não informado")+
+   (selectedOrder.payment==="Dinheiro"&&selectedOrder.customer?.cashReceived?"\\n💵 Cliente paga com: "+money(cash)+"\\n💸 TROCO A DEVOLVER: "+money(change):"")+
+   (selectedOrder.customer?.notes?"\\n📝 Observações: "+selectedOrder.customer.notes:"")+
+   "\\n\\n❤️ Obrigado pela preferência!\\n"+
+   "⚠️ Esta mensagem contém os dados atualizados e substitui a versão anterior do pedido.";
   try{
    if(navigator.clipboard?.writeText){
     await navigator.clipboard.writeText(message);
@@ -293,7 +295,7 @@ export default function App(){
     const copied=document.execCommand("copy");area.remove();
     if(!copied)throw new Error("O navegador não permitiu copiar automaticamente.");
    }
-   setNotice("Pedido atualizado copiado! Agora abra o WhatsApp do cliente, cole a mensagem e envie para ele conferir.");
+   setNotice("Pedido atualizado copiado com o mesmo layout e emojis da mensagem original. Abra a conversa do cliente, cole e envie.");
   }catch(error){setNotice("Não foi possível copiar o pedido. Tente novamente ou copie manualmente os dados.");}
  }
  async function updateStatus(id,status){
