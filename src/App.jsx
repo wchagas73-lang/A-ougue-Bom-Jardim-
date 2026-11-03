@@ -153,7 +153,7 @@ export default function App(){
     "👤 CLIENTE\n"+customer.name+"\n📞 "+customer.phone+"\n📍 "+customer.address+"\n\n"+
     "🛒 PRODUTOS\n"+orderLines+"\n\n"+
     "💰 RESUMO DO PEDIDO\nProdutos: "+money(subtotal)+"\n🛵 Entrega: "+money(fee)+"\n💵 TOTAL: "+money(total)+"\n\n"+
-    "💳 Pagamento: "+customer.payment+(customer.change?"\n💸 Troco para: "+customer.change:"")+
+    "💳 Pagamento: "+customer.payment+(customer.payment==="Dinheiro"&&customer.change&&Number(String(customer.change).replace(",","."))>=total?"\n💵 Cliente paga com: "+money(Number(String(customer.change).replace(",",".")))+"\n💸 TROCO A DEVOLVER: "+money(Number(String(customer.change).replace(",","."))-total):"")+
     (customer.notes?"\n📝 Observações: "+customer.notes:"")+"\n\n❤️ Obrigado pela preferência!\nPedido fictício para demonstração.";
    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});
    setNotice("Pedido de demonstração criado! Abrindo o WhatsApp da loja.");
@@ -170,7 +170,7 @@ export default function App(){
     customer_phone:customer.phone,
     delivery_address:customer.address.trim(),
     payment_method:paymentMap[customer.payment],
-    customer_notes:[customer.change?("Troco para: "+customer.change):"",customer.notes].filter(Boolean).join(" | "),
+    customer_notes:[customer.payment==="Dinheiro"&&customer.change?("Cliente paga com: "+money(Number(String(customer.change).replace(",",".")))+"; Troco a devolver: "+money(Number(String(customer.change).replace(",","."))-Number(total||0))):"",customer.notes].filter(Boolean).join(" | "),
     items:cart.map(p=>({product_id:p.id,quantity:p.qty}))
    }});
    if(error)throw error;
@@ -184,7 +184,7 @@ export default function App(){
     "👤 CLIENTE\n"+customer.name+"\n📞 "+customer.phone+"\n📍 "+customer.address+"\n\n"+
     "🛒 PRODUTOS\n"+orderLines+"\n\n"+
     "💰 RESUMO DO PEDIDO\nProdutos: "+money(data.subtotal)+"\n🛵 Entrega: "+money(data.delivery_fee)+"\n💵 TOTAL: "+money(data.total)+"\n\n"+
-    "💳 Pagamento: "+customer.payment+(customer.change?"\n💸 Troco para: "+customer.change:"")+
+    "💳 Pagamento: "+customer.payment+(customer.payment==="Dinheiro"&&customer.change&&Number(String(customer.change).replace(",","."))>=Number(data.total)?"\n💵 Cliente paga com: "+money(Number(String(customer.change).replace(",",".")))+"\n💸 TROCO A DEVOLVER: "+money(Number(String(customer.change).replace(",","."))-Number(data.total)):"")+
     (customer.notes?"\n📝 Observações: "+customer.notes:"")+"\n\n❤️ Obrigado pela preferência!";
    window.location.href="https://wa.me/"+STORE_WHATSAPP+"?text="+encodeURIComponent(whatsappMessage);
    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});
