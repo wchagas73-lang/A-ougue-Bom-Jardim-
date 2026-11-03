@@ -246,6 +246,15 @@ export async function loadAdminOrders(storeId) {
   }));
 }
 
+export async function updateAdminOrderItems(orderId, items) {
+  if (!supabase) throw new Error("Banco de dados não configurado.");
+  const { error } = await supabase.rpc("update_preparing_order_items", {
+    p_order_id: orderId,
+    p_items: items.map(item => ({ product_id: item.productId, quantity: Number(item.qty) }))
+  });
+  if (error) throw error;
+}
+
 export async function updateAdminOrderStatus(id, status) {
   if (!supabase) throw new Error("Banco de dados não configurado.");
   const dbStatus = statusToDb[status];
