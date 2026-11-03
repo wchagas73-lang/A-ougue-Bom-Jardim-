@@ -218,7 +218,7 @@ export async function loadAdminOrders(storeId) {
   if (!supabase || !storeId) throw new Error("Sessão da loja não encontrada.");
   const { data, error } = await supabase
     .from("orders")
-    .select("id,order_number,customer_name,customer_phone,delivery_address,payment_method,status,subtotal,delivery_fee,total,customer_notes,created_at,order_items(id,product_name,quantity,unit,unit_price,line_total),order_events(id,event_type,old_value,new_value,note,created_at)")
+    .select("id,order_number,customer_name,customer_phone,delivery_address,payment_method,status,subtotal,delivery_fee,total,customer_notes,created_at,order_items(id,product_id,product_name,quantity,unit,unit_price,line_total),order_events(id,event_type,old_value,new_value,note,created_at)")
     .eq("store_id", storeId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -228,7 +228,7 @@ export async function loadAdminOrders(storeId) {
     displayId: "BJ-" + o.order_number,
     customer: { name: o.customer_name, phone: o.customer_phone, address: o.delivery_address, notes: o.customer_notes || "" },
     items: (o.order_items || []).map((i) => ({
-      id: i.id, name: i.product_name, qty: Number(i.quantity),
+      id: i.id, productId: i.product_id, name: i.product_name, qty: Number(i.quantity),
       unit: i.unit, price: Number(i.unit_price), total: Number(i.line_total),
     })),
     subtotal: Number(o.subtotal),
