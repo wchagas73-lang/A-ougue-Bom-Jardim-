@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Beef, Search, ShoppingBag, Plus, Minus, X, Clock3, MapPin, ShieldCheck, LayoutDashboard, Package, ClipboardList, Settings, Tag, Pencil, Trash2, Eye, EyeOff, TrendingUp, Users, Truck, CheckCircle2, LogOut, ArrowLeft, Save, ImagePlus, LockKeyhole } from "lucide-react";
+import { Beef, Search, ShoppingBag, Plus, Minus, X, Clock3, MapPin, ShieldCheck, LayoutDashboard, Package, ClipboardList, Settings, Tag, Pencil, Trash2, Eye, EyeOff, TrendingUp, Users, Truck, CheckCircle2, LogOut, ArrowLeft, Save, ImagePlus, LockKeyhole, Copy } from "lucide-react";
 import { supabase } from "./lib/supabase";
 import { loadPublicCatalog, loadAdminCatalog, saveAdminProduct, deleteAdminProduct, loadAdminOrders, updateAdminOrderStatus, updateAdminOrderItems } from "./lib/storeData";
 
