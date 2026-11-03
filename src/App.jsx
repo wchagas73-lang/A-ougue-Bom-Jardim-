@@ -205,7 +205,37 @@ export default function App(){
    setNotice("Pedido #"+data.order_number+" registrado com sucesso. Abrindo o WhatsApp da loja...");
    setArea("store");
   }catch(error){
-   setNotice("Não foi possível enviar o pedido: "+(error.message||"tente novamente."));
+   // Fallback: se o banco estiver indisponível, não perder o pedido.
+   // O WhatsApp recebe os dados completos, mas o painel não é atualizado.
+   const fallbackNumber=String(Date.now()).slice(-6);
+   const fallbackAt=new Date().toISOString();
+   const fallbackItems=cart.map(p=>({...p,price:priceOf(p),total:Number((priceOf(p)*p.qty).toFixed(2))}));
+   const fallbackSubtotal=Number(fallbackItems.reduce((sum,p)=>sum+p.total,0).toFixed(2));
+   const fallbackFee=Number(fee||0);
+   const fallbackTotal=Number((fallbackSubtotal+fallbackFee).toFixed(2));
+   const fallbackLines=fallbackItems.map(p=>"• "+p.name+"\\n  "+p.qty+" "+p.unit+" × "+money(p.price)+"/"+p.unit+" = "+money(p.total)).join("\\n\\n");
+   const fallbackChange=customer.payment==="Dinheiro"&&customer.change.trim()!==""?Number(String(customer.change).replace(",",".")):null;
+   const fallbackMessage="🥩 AÇOUGUE BOM JARDIM\\n"+
+    "📦 NOVO PEDIDO — ENVIO ALTERNATIVO #"+fallbackNumber+"\\n"+
+    "🕒 Recebido em: "+new Date(fallbackAt).toLocaleString("pt-BR")+"\\n\\n"+
+    "👤 CLIENTE\\n"+customer.name+"\\n📞 "+customer.phone+"\\n📍 "+customer.address+(customer.reference?"\\n📌 Referência: "+customer.reference:"")+"\\n\\n"+
+    "🛒 PRODUTOS\\n"+fallbackLines+"\\n\\n"+
+    "💰 RESUMO DO PEDIDO\\nProdutos: "+money(fallbackSubtotal)+"\\n🛵 Entrega estimada: "+money(fallbackFee)+"\\n💵 TOTAL ESTIMADO: "+money(fallbackTotal)+"\\n\\n"+
+    "💳 Pagamento: "+customer.payment+(fallbackChange!==null&&fallbackChange>=fallbackTotal?"\\n💵 Cliente paga com: "+money(fallbackChange)+"\\n💸 TROCO A DEVOLVER: "+money(fallbackChange-fallbackTotal):"")+
+    (customer.notes?"\\n📝 Observações: "+customer.notes:"")+
+    "\\n\\n⚠️ ATENÇÃO: o banco não confirmou o registro. Pedido enviado pelo WhatsApp para conferência da loja.";
+   const fallbackOrder={id:"FALLBACK-"+fallbackNumber,displayId:"#"+fallbackNumber,createdAt:fallbackAt,customer:{...customer},items:fallbackItems,subtotal:fallbackSubtotal,fee:fallbackFee,total:fallbackTotal,payment:customer.payment,status:"Novo",statusHistory:[{status:"Novo",at:fallbackAt,note:"Recebido localmente; aguardando conferência no WhatsApp."}]};
+   const nextOrders=[fallbackOrder,...orders];
+   setOrders(nextOrders);
+   try{localStorage.setItem("bomjardim_orders",JSON.stringify(nextOrders))}catch(storageError){console.warn("Não foi possível salvar a cópia local do pedido.",storageError)}
+   const whatsappNumber=STORE_WHATSAPP;
+   if(whatsappNumber){
+    window.location.assign("https://wa.me/"+whatsappNumber+"?text="+encodeURIComponent(fallbackMessage));
+    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",reference:"",payment:"Pix",change:"",notes:""});
+    setNotice("Banco indisponível. Pedido encaminhado ao WhatsApp como envio alternativo; confira e registre no painel.");
+   }else{
+    setNotice("Falha no banco e WhatsApp da loja não configurado. Anote os dados do pedido antes de fechar.");
+   }
   }
   finally{setDataLoading(false)}
  }
