@@ -179,7 +179,10 @@ export default function App(){
     customer_notes:customer.notes.trim(),
     items:cart.map(p=>({product_id:p.id,quantity:p.qty}))
    }});
-   if(error)throw error;
+   if(error){
+    const serverMessage=data?.error||error?.context?.message||error?.message;
+    throw new Error(serverMessage||"Não foi possível registrar o pedido no sistema da loja.");
+   }
    if(!data?.success)throw new Error(data?.error||"Não foi possível registrar o pedido.");
    const orderItems=Array.isArray(data.items)&&data.items.length?data.items:cart.map(p=>({product_name:p.name,quantity:p.qty,unit:p.unit,unit_price:p.price,line_total:p.price*p.qty}));
    const orderLines=orderItems.map(item=>"• "+item.product_name+"\n  "+item.quantity+" "+item.unit+" × "+money(item.unit_price)+"/"+item.unit+" = "+money(item.line_total)).join("\n\n");
@@ -192,8 +195,11 @@ export default function App(){
     "💰 RESUMO DO PEDIDO\nProdutos: "+money(data.subtotal)+"\n🛵 Entrega: "+money(data.delivery_fee)+"\n💵 TOTAL: "+money(data.total)+"\n\n"+
     "💳 Pagamento: "+customer.payment+(customer.payment==="Dinheiro"&&customer.change&&Number(String(customer.change).replace(",","."))>=Number(data.total)?"\n💵 Cliente paga com: "+money(Number(String(customer.change).replace(",",".")))+"\n💸 TROCO A DEVOLVER: "+money(Number(String(customer.change).replace(",","."))-Number(data.total)):"")+
     (customer.notes?"\n📝 Observações: "+customer.notes:"")+"\n\n❤️ Obrigado pela preferência!";
-   window.location.href="https://wa.me/"+STORE_WHATSAPP+"?text="+encodeURIComponent(whatsappMessage);
-   setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",payment:"Pix",change:"",notes:""});
+   const whatsappNumber=String(data.store_whatsapp||STORE_WHATSAPP).replace(/\D/g,"");
+   if(!whatsappNumber)throw new Error("O WhatsApp de recebimento da loja não está configurado.");
+   const whatsappUrl="https://wa.me/"+whatsappNumber+"?text="+encodeURIComponent(whatsappMessage);
+   window.location.assign(whatsappUrl);
+   setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",reference:"",payment:"Pix",change:"",notes:""});
    setNotice("Pedido #"+data.order_number+" registrado com sucesso. Abrindo o WhatsApp da loja...");
    setArea("store");
   }catch(error){setNotice("Não foi possível enviar o pedido: "+(error.message||"tente novamente."));}
