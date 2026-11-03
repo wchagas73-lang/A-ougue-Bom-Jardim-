@@ -218,7 +218,7 @@ export async function loadAdminOrders(storeId) {
   if (!supabase || !storeId) throw new Error("Sessão da loja não encontrada.");
   const { data, error } = await supabase
     .from("orders")
-    .select("id,order_number,customer_name,customer_phone,delivery_address,payment_method,status,subtotal,delivery_fee,total,customer_notes,created_at,order_items(id,product_id,product_name,quantity,unit,unit_price,line_total),order_events(id,event_type,old_value,new_value,note,created_at)")
+    .select("id,order_number,customer_name,customer_phone,delivery_address,delivery_reference,payment_method,cash_received,change_due,status,subtotal,delivery_fee,total,customer_notes,created_at,order_items(id,product_id,product_name,quantity,unit,unit_price,line_total),order_events(id,event_type,old_value,new_value,note,created_at)")
     .eq("store_id", storeId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -226,7 +226,7 @@ export async function loadAdminOrders(storeId) {
     id: o.id,
     orderNumber: o.order_number,
     displayId: "BJ-" + o.order_number,
-    customer: { name: o.customer_name, phone: o.customer_phone, address: o.delivery_address, notes: o.customer_notes || "" },
+    customer: { name: o.customer_name, phone: o.customer_phone, address: o.delivery_address, reference: o.delivery_reference || "", notes: o.customer_notes || "", cashReceived: o.cash_received == null ? "" : String(o.cash_received), changeDue: o.change_due == null ? "" : String(o.change_due) },
     items: (o.order_items || []).map((i) => ({
       id: i.id, productId: i.product_id, name: i.product_name, qty: Number(i.quantity),
       unit: i.unit, price: Number(i.unit_price), total: Number(i.line_total),
@@ -246,13 +246,17 @@ export async function loadAdminOrders(storeId) {
   }));
 }
 
-export async function updateAdminOrderItems(orderId, items) {
+export async function updateAdminOrderItems(orderId, items, details) {
   if (!supabase) throw new Error("Banco de dados não configurado.");
-  const { error } = await supabase.rpc("update_preparing_order_items", {
+  const { error } = await supabase.rpc("update_preparing_order_complete", {
     p_order_id: orderId,
-    p_items: items.map(item => ({ product_id: item.productId, quantity: Number(item.qty) }))
+    p_items: items.map(item => ({ product_id: item.productId, quantity: Number(item.qty) })),
+    p_order_data: details
   });
-  if (error) throw error;
+  if (error) {
+    const detail = [error.message, error.details, error.hint, error.code].filter(Boolean).join(" | ");
+    throw new Error(detail || "O banco não confirmou a atualização completa do pedido.");
+  }
 }
 
 export async function updateAdminOrderStatus(id, status) {
