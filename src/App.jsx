@@ -166,9 +166,8 @@ export default function App(){
   }
   if(!supabase||!catalogLoaded||!cart.every(p=>typeof p.id==="string")){setNotice("O catálogo oficial ainda não está disponível para pedidos online. Aguarde a loja cadastrar os produtos no banco.");return}
   const paymentMap={"Pix":"pix","Dinheiro":"cash","Cartão de débito":"debit","Cartão de crédito":"credit"};
-  // Reserve a tab during the original click; mobile browsers can block redirects
-  // to WhatsApp when they happen only after the asynchronous order request.
-  const whatsappWindow=window.open("https://wa.me/"+STORE_WHATSAPP,"_blank");
+  // Open WhatsApp in the same tab only after the order is saved. This avoids
+  // launching an empty WhatsApp chat before the message is ready on mobile browsers.
   setDataLoading(true);
   try{
    const {data,error}=await supabase.functions.invoke("create-order",{body:{
@@ -201,13 +200,11 @@ export default function App(){
    const whatsappNumber=STORE_WHATSAPP;
    if(!whatsappNumber)throw new Error("O WhatsApp de recebimento da loja não está configurado.");
    const whatsappUrl="https://wa.me/"+whatsappNumber+"?text="+encodeURIComponent(whatsappMessage);
-   if(whatsappWindow&&!whatsappWindow.closed){whatsappWindow.location.href=whatsappUrl;}
-   else{window.location.href=whatsappUrl;}
+   window.location.assign(whatsappUrl);
    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",reference:"",payment:"Pix",change:"",notes:""});
    setNotice("Pedido #"+data.order_number+" registrado com sucesso. Abrindo o WhatsApp da loja...");
    setArea("store");
   }catch(error){
-   if(whatsappWindow&&!whatsappWindow.closed)whatsappWindow.close();
    setNotice("Não foi possível enviar o pedido: "+(error.message||"tente novamente."));
   }
   finally{setDataLoading(false)}
