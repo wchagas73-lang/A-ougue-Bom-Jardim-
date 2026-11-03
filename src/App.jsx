@@ -176,7 +176,7 @@ export default function App(){
     delivery_reference:customer.reference.trim(),
     cash_received:customer.payment==="Dinheiro"&&customer.change.trim()!==""?Number(String(customer.change).replace(",",".")):null,
     payment_method:paymentMap[customer.payment],
-    customer_notes:[customer.payment==="Dinheiro"&&customer.change?("Cliente paga com: "+money(Number(String(customer.change).replace(",",".")))+"; Troco a devolver: "+money(Number(String(customer.change).replace(",","."))-Number(total||0))):"",customer.notes].filter(Boolean).join(" | "),
+    customer_notes:customer.notes.trim(),
     items:cart.map(p=>({product_id:p.id,quantity:p.qty}))
    }});
    if(error)throw error;
