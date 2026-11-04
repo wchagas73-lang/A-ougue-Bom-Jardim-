@@ -298,20 +298,20 @@ export default function App(){
  }
  async function copyUpdatedOrder(){
   if(!selectedOrder)return;
-  const orderLines=(selectedOrder.items||[]).map(i=>"• "+i.name+"\\n  "+i.qty+" "+i.unit+" × "+money(i.price??i.unit_price??0)+"/"+i.unit+" = "+money(i.total??Number(i.price??i.unit_price??0)*Number(i.qty??i.quantity??0))).join("\\n\\n");
+  const orderLines=(selectedOrder.items||[]).map(i=>"• "+i.name+"\n  "+i.qty+" "+i.unit+" × "+money(i.price??i.unit_price??0)+"/"+i.unit+" = "+money(i.total??Number(i.price??i.unit_price??0)*Number(i.qty??i.quantity??0))).join("\n\n");
   const cash=Number(String(selectedOrder.customer?.cashReceived||"").replace(",","."));
   const change=Number.isFinite(cash)?Math.max(0,cash-Number(selectedOrder.total||0)):0;
-  const message="🥩 AÇOUGUE BOM JARDIM\\n"+
-   "📦 PEDIDO ATUALIZADO "+(selectedOrder.displayId||selectedOrder.id)+"\\n"+
-   "🕒 Atualizado em: "+new Date().toLocaleString("pt-BR")+"\\n\\n"+
-   "👤 CLIENTE\\n"+(selectedOrder.customer?.name||"")+"\\n📞 "+(selectedOrder.customer?.phone||"")+"\\n📍 "+(selectedOrder.customer?.address||"")+
-   (selectedOrder.customer?.reference?"\\n📌 Referência: "+selectedOrder.customer.reference:"")+"\\n\\n"+
-   "🛒 PRODUTOS\\n"+orderLines+"\\n\\n"+
-   "💰 RESUMO DO PEDIDO\\nProdutos: "+money(selectedOrder.subtotal)+"\\n🛵 Entrega: "+money(selectedOrder.fee)+"\\n💵 TOTAL: "+money(selectedOrder.total)+"\\n\\n"+
+  const message="🥩 AÇOUGUE BOM JARDIM\n"+
+   "📦 PEDIDO ATUALIZADO "+(selectedOrder.displayId||selectedOrder.id)+"\n"+
+   "🕒 Atualizado em: "+new Date().toLocaleString("pt-BR")+"\n\n"+
+   "👤 CLIENTE\n"+(selectedOrder.customer?.name||"")+"\n📞 "+(selectedOrder.customer?.phone||"")+"\n📍 "+(selectedOrder.customer?.address||"")+
+   (selectedOrder.customer?.reference?"\n📌 Referência: "+selectedOrder.customer.reference:"")+"\n\n"+
+   "🛒 PRODUTOS\n"+orderLines+"\n\n"+
+   "💰 RESUMO DO PEDIDO\nProdutos: "+money(selectedOrder.subtotal)+"\n🛵 Entrega: "+money(selectedOrder.fee)+"\n💵 TOTAL: "+money(selectedOrder.total)+"\n\n"+
    "💳 Pagamento: "+(selectedOrder.payment||"Não informado")+
-   (selectedOrder.payment==="Dinheiro"&&selectedOrder.customer?.cashReceived?"\\n💵 Cliente paga com: "+money(cash)+"\\n💸 TROCO A DEVOLVER: "+money(change):"")+
-   (selectedOrder.customer?.notes?"\\n📝 Observações: "+selectedOrder.customer.notes:"")+
-   "\\n\\n❤️ Obrigado pela preferência!\\n"+
+   (selectedOrder.payment==="Dinheiro"&&selectedOrder.customer?.cashReceived?"\n💵 Cliente paga com: "+money(cash)+"\n💸 TROCO A DEVOLVER: "+money(change):"")+
+   (selectedOrder.customer?.notes?"\n📝 Observações: "+selectedOrder.customer.notes:"")+
+   "\n\n❤️ Obrigado pela preferência!\n"+
    "⚠️ Esta mensagem contém os dados atualizados e substitui a versão anterior do pedido.";
   try{
    if(navigator.clipboard?.writeText){
