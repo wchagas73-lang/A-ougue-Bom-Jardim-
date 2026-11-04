@@ -259,6 +259,16 @@ export async function updateAdminOrderItems(orderId, items, details) {
   }
 }
 
+export async function deleteAdminOrder(id, storeId) {
+  if (!supabase || !storeId) throw new Error("Sessão da loja não encontrada.");
+  const { error } = await supabase.from("orders")
+    .delete().eq("id", id).eq("store_id", storeId);
+  if (error) {
+    const detail = [error.message, error.details, error.hint, error.code].filter(Boolean).join(" | ");
+    throw new Error(detail || "O banco não confirmou a exclusão do pedido.");
+  }
+}
+
 export async function updateAdminOrderStatus(id, status) {
   if (!supabase) throw new Error("Banco de dados não configurado.");
   const dbStatus = statusToDb[status];
