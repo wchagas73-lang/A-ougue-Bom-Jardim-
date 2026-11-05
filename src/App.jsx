@@ -60,6 +60,16 @@ const productImage = product => {
 const demoMeatImage = category => CATEGORY_IMAGES[category]||CATEGORY_IMAGES.Diversos;
 export default function App(){
  const deletedOrderIds=useRef(new Set());
+ const ordersRequestVersion=useRef(0);
+ async function refreshAdminOrders(storeId){
+  const requestVersion=++ordersRequestVersion.current;
+  const fresh=await loadAdminOrders(storeId);
+  if(requestVersion===ordersRequestVersion.current){
+   const visible=fresh.filter(order=>!deletedOrderIds.current.has(String(order.id)));
+   setOrders(old=>[...old.filter(order=>String(order.id).startsWith("DEMO-")||String(order.id).startsWith("FALLBACK-")),...visible]);
+  }
+  return fresh;
+ }
  const [products,setProducts]=useState(()=>load("bomjardim_products",initialProducts));
  const [orders,setOrders]=useState(()=>load("bomjardim_orders",[]));
  const [delivery,setDelivery]=useState(()=>{const saved=load("bomjardim_delivery",null);if(!saved)return {mode:"manual",fee:0,freeOver:150,paused:false,estimatedTime:"40 a 60 minutos"};if(saved.mode==="fixed"&&Number(saved.fee)===7&&saved.demoFee!==false)return {...saved,mode:"manual",fee:0,demoFee:false};return saved;});
@@ -88,7 +98,7 @@ export default function App(){
  useEffect(()=>localStorage.setItem("bomjardim_delivery",JSON.stringify(delivery)),[delivery]);
  useEffect(()=>{let alive=true;(async()=>{try{const result=await loadPublicCatalog();if(!alive)return;const officialProducts=result.products||[];const officialNames=new Set(officialProducts.map(p=>p.name.trim().toLowerCase()));const demoProducts=initialProducts.filter(p=>!officialNames.has(p.name.trim().toLowerCase()));setProducts([...officialProducts,...demoProducts]);if(result.store)setStoreInfo(result.store);setCatalogLoaded(true)}catch(error){if(alive){setProducts(initialProducts);setNotice("Não foi possível atualizar o catálogo online. Exibindo o catálogo fictício de demonstração.")}}})();return()=>{alive=false}},[]);
  useEffect(()=>{if(!session||!profile?.store_id)return;let alive=true;(async()=>{setDataLoading(true);try{const [dbProducts,dbOrders]=await Promise.all([loadAdminCatalog(profile.store_id),loadAdminOrders(profile.store_id)]);if(!alive)return;if(dbProducts.length)setProducts(dbProducts);const localDemoOrders=load("bomjardim_orders",[]).filter(o=>String(o.id).startsWith("DEMO-"));setOrders([...localDemoOrders,...dbOrders]);if(dbProducts.length===0)setNotice("Banco conectado. Cadastre o primeiro produto oficial da loja.");}catch(error){if(alive)setNotice("Erro ao carregar os dados da loja: "+(error.message||"verifique as permissões do Supabase."));}finally{if(alive)setDataLoading(false)}})();return()=>{alive=false}},[session,profile?.store_id]);
- useEffect(()=>{if(!supabase||!session||!profile?.store_id)return;let active=true;const storeId=profile.store_id;const refreshOrders=async()=>{try{const fresh=await loadAdminOrders(storeId);if(active){const visible=fresh.filter(o=>!deletedOrderIds.current.has(String(o.id)));setOrders(old=>[...old.filter(o=>String(o.id).startsWith("DEMO-")||String(o.id).startsWith("FALLBACK-")),...visible]);}}catch(error){console.warn("Não foi possível atualizar os pedidos automaticamente.",error)}};const channel=supabase.channel("store-orders-"+storeId).on("postgres_changes",{event:"*",schema:"public",table:"orders",filter:"store_id=eq."+storeId},()=>{refreshOrders()}).subscribe((status,error)=>{if(status==="CHANNEL_ERROR"||status==="TIMED_OUT")console.warn("Realtime dos pedidos indisponível; atualização periódica será mantida.",error||status)});const fallbackRefresh=window.setInterval(refreshOrders,15000);return()=>{active=false;window.clearInterval(fallbackRefresh);supabase.removeChannel(channel)}},[session,profile?.store_id]);
+ useEffect(()=>{if(!supabase||!session||!profile?.store_id)return;let active=true;const storeId=profile.store_id;const refreshOrders=async()=>{try{if(active)await refreshAdminOrders(storeId);}catch(error){console.warn("Não foi possível atualizar os pedidos automaticamente.",error)}};const channel=supabase.channel("store-orders-"+storeId).on("postgres_changes",{event:"*",schema:"public",table:"orders",filter:"store_id=eq."+storeId},()=>{refreshOrders()}).subscribe((status,error)=>{if(status==="CHANNEL_ERROR"||status==="TIMED_OUT")console.warn("Realtime dos pedidos indisponível; atualização periódica será mantida.",error||status)});const fallbackRefresh=window.setInterval(refreshOrders,15000);return()=>{active=false;window.clearInterval(fallbackRefresh);supabase.removeChannel(channel)}},[session,profile?.store_id]);
  const STORE_WHATSAPP="5532998275204";
  const estimatedTime=delivery.estimatedTime||"40 a 60 minutos";
  const catalogProducts=products.length?products:initialProducts;
@@ -327,17 +337,17 @@ export default function App(){
     localStorage.setItem("bomjardim_orders",JSON.stringify(next));
    }else{
     if(profile?.role!=="owner")throw new Error("Somente o proprietário pode excluir pedidos.");
+    // Invalida consultas anteriores para não restaurar contagens antigas no painel.
+    ordersRequestVersion.current++;
     await deleteAdminOrder(id,profile.store_id);
-    // Bloqueia respostas antigas de atualização automática que poderiam recolocar o pedido excluído no painel.
+    // Impede que consultas futuras tragam novamente o pedido excluído.
     deletedOrderIds.current.add(id);
     setOrders(old=>{
      const next=old.filter(item=>String(item.id)!==id);
      localStorage.setItem("bomjardim_orders",JSON.stringify(next));
      return next;
     });
-    const fresh=await loadAdminOrders(profile.store_id);
-    const visible=fresh.filter(item=>String(item.id)!==id&&!deletedOrderIds.current.has(String(item.id)));
-    setOrders(old=>[...old.filter(item=>String(item.id).startsWith("DEMO-")||String(item.id).startsWith("FALLBACK-")),...visible]);
+    await refreshAdminOrders(profile.store_id);
    }
    if(String(selectedOrder?.id)===id)setSelectedOrder(null);
    setNotice("Pedido "+label+" excluído permanentemente.");
@@ -349,9 +359,9 @@ export default function App(){
   try{
    const isLocalOrder=String(id).startsWith("DEMO-")||String(id).startsWith("FALLBACK-");
    if(!isLocalOrder){
+    ordersRequestVersion.current++;
     await updateAdminOrderStatus(id,status);
-    const fresh=await loadAdminOrders(profile.store_id);
-    setOrders(old=>[...old.filter(o=>String(o.id).startsWith("DEMO-")||String(o.id).startsWith("FALLBACK-")),...fresh]);
+    await refreshAdminOrders(profile.store_id);
    }else{
     const changedAt=new Date().toISOString();
     setOrders(old=>{const next=old.map(o=>o.id===id?{...o,status,statusHistory:[...(o.statusHistory||[{status:o.status,at:o.createdAt}]),{status,at:changedAt}]}:o);localStorage.setItem("bomjardim_orders",JSON.stringify(next));return next});
