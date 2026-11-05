@@ -458,3 +458,24 @@ td{border-color:var(--line)}
     font-size:11px;
   }
 }
+
+
+/* Botão de escolha: mantém o texto inteiro visível em telas estreitas. */
+.product-bottom .choose-product-button{
+  display:inline-flex !important;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto !important;
+  width:max-content !important;
+  min-width:82px !important;
+  height:36px !important;
+  padding:0 12px !important;
+  white-space:nowrap !important;
+  overflow:visible !important;
+  font-size:11px !important;
+  line-height:1 !important;
+}
+@media(max-width:520px){
+  .product-bottom{flex-wrap:wrap;}
+  .product-bottom .choose-product-button{min-width:82px !important;}
+}
