@@ -264,12 +264,14 @@ export async function updateAdminOrderItems(orderId, items, details) {
 
 export async function deleteAdminOrder(id, storeId) {
   if (!supabase || !storeId) throw new Error("Sessão da loja não encontrada.");
-  const { error } = await supabase.from("orders")
-    .delete().eq("id", id).eq("store_id", storeId);
+  const { data, error } = await supabase.from("orders")
+    .delete().eq("id", id).eq("store_id", storeId)
+    .select("id").maybeSingle();
   if (error) {
     const detail = [error.message, error.details, error.hint, error.code].filter(Boolean).join(" | ");
     throw new Error(detail || "O banco não confirmou a exclusão do pedido.");
   }
+  if (!data?.id) throw new Error("Nenhum pedido foi excluído. Verifique se ele ainda existe e se sua conta tem permissão.");
 }
 
 export async function updateAdminOrderStatus(id, status) {
