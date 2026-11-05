@@ -209,6 +209,8 @@ const statusToDb = {
   "Entregue": "delivered",
   "Cancelado": "cancelled",
   "Aguardando resolução": "awaiting_resolution",
+  "Retornando": "returning",
+  "Retornado": "returning",
 };
 const statusFromDb = Object.fromEntries(
   Object.entries(statusToDb).map(([label, value]) => [value, label])
@@ -272,9 +274,18 @@ export async function deleteAdminOrder(id, storeId) {
 export async function updateAdminOrderStatus(id, status) {
   if (!supabase) throw new Error("Banco de dados não configurado.");
   const dbStatus = statusToDb[status];
-  if (!dbStatus) throw new Error("Status de pedido inválido.");
-  const { error } = await supabase.from("orders")
+  if (!dbStatus) throw new Error("Status de pedido inválido: " + status);
+  const { data, error } = await supabase.from("orders")
     .update({ status: dbStatus, updated_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) throw error;
+    .eq("id", id)
+    .select("id,status")
+    .maybeSingle();
+  if (error) {
+    const detail = [error.message, error.details, error.hint, error.code].filter(Boolean).join(" | ");
+    throw new Error(detail || "O Supabase recusou a atualização do status.");
+  }
+  if (!data?.id) {
+    throw new Error("O banco não confirmou a alteração. Verifique se o usuário tem permissão para atualizar pedidos nesta loja (RLS/perfil).");
+  }
+  return data;
 }
