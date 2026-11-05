@@ -420,3 +420,18 @@ td{border-color:var(--line)}
 /* Validação clara dos campos obrigatórios no checkout */
 .checkout-form input.field-invalid{border:1.5px solid #d93025!important;background:#fff8f7;box-shadow:0 0 0 2px #d9302518}
 .checkout-form .field-error{display:block;color:#c5221f;font-size:11px;font-weight:700;margin-top:-6px;line-height:1.4}
+
+
+/* Escolha de compra por peso ou por valor em reais */
+.purchase-choice{display:grid;gap:10px;margin-top:13px;padding:12px;border:1px solid #dfe8dc;border-radius:12px;background:#f8faf6}
+.purchase-choice-tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.purchase-choice-tabs button{min-height:39px;padding:8px 9px;border:1px solid #d9e2d6;border-radius:8px;background:#fff;color:#425444;font:700 11px 'DM Sans',sans-serif;cursor:pointer}
+.purchase-choice-tabs button.active{border-color:#294a35;background:#294a35;color:#fff}
+.purchase-choice>label{display:grid;gap:6px;color:#4b5d4c;font-size:11px;font-weight:700}
+.purchase-choice>label input{width:100%;min-height:43px;padding:10px 12px;border:1px solid #d6dfd3;border-radius:8px;background:#fff;color:#243729;font:600 15px 'DM Sans',sans-serif}
+.purchase-estimate{color:#547354;font-size:11px;font-weight:700}
+.purchase-choice-actions{display:grid;grid-template-columns:auto 1fr;gap:8px}
+.purchase-choice-actions button{min-height:40px;padding:9px 12px;border:0;border-radius:8px;font:700 11px 'DM Sans',sans-serif;cursor:pointer}
+.purchase-cancel{background:#e9eee7;color:#425344}
+.purchase-confirm{background:#244631;color:#fff}
+@media(max-width:520px){.purchase-choice{padding:10px}.purchase-choice-tabs button{font-size:10px}.purchase-choice-actions button{font-size:10px}}
