@@ -68,10 +68,12 @@ Deno.serve(async (req) => {
     const cleanItems = items.map((item: any) => ({
       product_id: String(item?.product_id ?? ""),
       quantity: Number(item?.quantity),
+      requested_amount: item?.requested_amount == null ? null : Number(item.requested_amount),
     }));
     if (cleanItems.some((item: any) =>
       !/^[0-9a-f-]{36}$/i.test(item.product_id) ||
-      !Number.isFinite(item.quantity) || item.quantity <= 0 || item.quantity > 50
+      !Number.isFinite(item.quantity) || item.quantity <= 0 || item.quantity > 50 ||
+      (item.requested_amount !== null && (!Number.isFinite(item.requested_amount) || item.requested_amount <= 0 || item.requested_amount > 100000))
     )) return json({ error: "Há um produto ou quantidade inválida." }, 400);
 
     const ids = [...new Set(cleanItems.map((item: any) => item.product_id))];
@@ -102,16 +104,24 @@ Deno.serve(async (req) => {
     const orderItems = cleanItems.map((item: any) => {
       const product: any = productMap.get(item.product_id);
       const promo: any = promoMap.get(product.id);
-      const quantity = Math.round(item.quantity * 1000) / 1000;
       const regularPrice = Number(product.price);
       const unitPrice = promo ? Number(promo.promotional_price) : regularPrice;
+      const isAmountPurchase = item.requested_amount !== null;
+      if (isAmountPurchase && product.unit !== "kg") {
+        throw new Error("A compra por valor só está disponível para produtos vendidos por quilo.");
+      }
+      const requestedAmount = isAmountPurchase ? Math.round(item.requested_amount * 100) / 100 : null;
+      const quantity = isAmountPurchase
+        ? Math.round((requestedAmount / unitPrice) * 1000) / 1000
+        : Math.round(item.quantity * 1000) / 1000;
       return {
         product_id: product.id,
         product_name: product.name,
         quantity,
         unit: product.unit,
         unit_price: unitPrice,
-        line_total: Math.round(quantity * unitPrice * 100) / 100
+        // Keep the customer's requested currency amount authoritative; the rounded kg is only an estimate.
+        line_total: isAmountPurchase ? requestedAmount : Math.round(quantity * unitPrice * 100) / 100
       };
     });
     const subtotal = Math.round(orderItems.reduce((sum: number, item: any) => sum + item.line_total, 0) * 100) / 100;
