@@ -206,11 +206,11 @@ export default function App(){
    // O WhatsApp recebe os dados completos, mas o painel não é atualizado.
    const fallbackNumber=String(Date.now()).slice(-6);
    const fallbackAt=new Date().toISOString();
-   const fallbackItems=cart.map(p=>({...p,price:priceOf(p),total:Number((priceOf(p)*p.qty).toFixed(2))}));
+   const fallbackItems=cart.map(p=>({...p,price:priceOf(p),total:lineTotalOf(p)}));
    const fallbackSubtotal=Number(fallbackItems.reduce((sum,p)=>sum+p.total,0).toFixed(2));
    const fallbackFee=Number(fee||0);
    const fallbackTotal=Number((fallbackSubtotal+fallbackFee).toFixed(2));
-   const fallbackLines=fallbackItems.map(p=>"• "+p.name+"\\n  "+p.qty+" "+p.unit+" × "+money(p.price)+"/"+p.unit+" = "+money(p.total)).join("\\n\\n");
+   const fallbackLines=fallbackItems.map(p=>"• "+p.name+"\\n  "+itemDescription(p)+"\\n  Total: "+money(p.total)).join("\\n\\n");
    const fallbackChange=customer.payment==="Dinheiro"&&customer.change.trim()!==""?Number(String(customer.change).replace(",",".")):null;
    const fallbackMessage="🥩 AÇOUGUE BOM JARDIM\n"+
     "📦 NOVO PEDIDO #"+fallbackNumber+"\n"+
