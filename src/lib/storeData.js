@@ -212,9 +212,10 @@ const statusToDb = {
   "Retornando": "returning",
   "Retornado": "returning",
 };
-const statusFromDb = Object.fromEntries(
-  Object.entries(statusToDb).map(([label, value]) => [value, label])
-);
+const statusFromDb = {
+  ...Object.fromEntries(Object.entries(statusToDb).map(([label, value]) => [value, label])),
+  returning: "Retornando",
+};
 
 export async function loadAdminOrders(storeId) {
   if (!supabase || !storeId) throw new Error("Sessão da loja não encontrada.");
