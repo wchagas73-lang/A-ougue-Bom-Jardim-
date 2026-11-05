@@ -113,7 +113,7 @@ export default function App(){
  const lineTotalOf=p=>p.purchaseMode==="amount"?Number(p.requestedAmount||0):Number((priceOf(p)*p.qty).toFixed(2));
  const itemDescription=p=>p.purchaseMode==="amount"?"Valor solicitado: "+money(p.requestedAmount)+" (aprox. "+p.qty.toLocaleString("pt-BR",{maximumFractionDigits:3})+" kg)":p.qty.toLocaleString("pt-BR")+" "+p.unit+" × "+money(priceOf(p))+"/"+p.unit+" = "+money(lineTotalOf(p));
  // Mantém "Todos" como categoria inicial.
- const count=cart.reduce((s,p)=>s+p.qty,0),subtotal=cart.reduce((s,p)=>s+lineTotalOf(p),0);
+ const count=cart.length,subtotal=cart.reduce((s,p)=>s+lineTotalOf(p),0);
  const fee=delivery.mode==="manual"?0:delivery.mode==="fixed"?Number(delivery.fee||0):(subtotal>=Number(delivery.freeOver||0)?0:Number(delivery.fee||0));
  const total=subtotal+fee;
  const delivered=orders.filter(o=>o.status==="Entregue");
@@ -132,7 +132,7 @@ export default function App(){
   return matchesStatus&&matchesPeriod&&matchesSearch;
  });
  const revenue=delivered.reduce((s,o)=>s+o.total,0);
- function add(p,mode="weight",value=0.5){if(delivery.paused){setNotice("A loja pausou temporariamente o recebimento de pedidos.");return}if(p.unit==="kg"&&(!(priceOf(p)>0)||!(value>0))){setNotice("Informe um peso ou valor válido para este produto.");return}const requestedAmount=p.unit==="kg"&&mode==="amount"?Number(value.toFixed(2)):null;const quantity=p.unit==="kg"?(mode==="amount"?Number((requestedAmount/priceOf(p)).toFixed(6)):Number(value)):1;setCart(old=>{const x=old.find(i=>i.id===p.id);return x?old.map(i=>i.id===p.id?{...i,qty:Number((i.qty+quantity).toFixed(6)),purchaseMode:mode==="amount"?"amount":i.purchaseMode,requestedAmount:mode==="amount"?Number(((i.requestedAmount||0)+requestedAmount).toFixed(2)):i.requestedAmount}:i):[...old,{...p,qty:quantity,purchaseMode:mode==="amount"?"amount":"weight",requestedAmount}]});setConfiguringProduct(null)}
+ function add(p,mode="weight",value=0.5){if(delivery.paused){setNotice("A loja pausou temporariamente o recebimento de pedidos.");return}if(p.unit==="kg"&&(!(priceOf(p)>0)||!(value>0)||(mode==="weight"&&value<0.5))){setNotice("Informe um peso ou valor válido para este produto.");return}const requestedAmount=p.unit==="kg"&&mode==="amount"?Number(value.toFixed(2)):null;const quantity=p.unit==="kg"?(mode==="amount"?Number((requestedAmount/priceOf(p)).toFixed(6)):Number(value)):1;setCart(old=>{const x=old.find(i=>i.id===p.id);return x?old.map(i=>i.id===p.id?{...i,qty:Number((i.qty+quantity).toFixed(6)),purchaseMode:mode==="amount"||i.purchaseMode==="amount"?"amount":"weight",requestedAmount:mode==="amount"||i.purchaseMode==="amount"?Number((lineTotalOf(i)+(mode==="amount"?requestedAmount:Number((priceOf(p)*quantity).toFixed(2)))).toFixed(2)):null}:i):[...old,{...p,qty:quantity,purchaseMode:mode==="amount"?"amount":"weight",requestedAmount}]});setConfiguringProduct(null)}
  function qty(id,d){setCart(old=>old.map(p=>{if(p.id!==id)return p;const nextQty=Math.max(0,Number((p.qty+d).toFixed(6)));return {...p,qty:nextQty,requestedAmount:p.purchaseMode==="amount"?Number((nextQty*priceOf(p)).toFixed(2)):p.requestedAmount}}).filter(p=>p.qty>0))}
  async function finishOrder(){
   if(delivery.paused){setNotice("A loja pausou temporariamente o recebimento de pedidos.");return}
