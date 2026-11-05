@@ -327,6 +327,12 @@ export default function App(){
    }else{
     if(profile?.role!=="owner")throw new Error("Somente o proprietário pode excluir pedidos.");
     await deleteAdminOrder(id,profile.store_id);
+    // Remove imediatamente da lista para recalcular os indicadores no mesmo instante.
+    setOrders(old=>{
+     const next=old.filter(item=>String(item.id)!==id);
+     localStorage.setItem("bomjardim_orders",JSON.stringify(next));
+     return next;
+    });
     const fresh=await loadAdminOrders(profile.store_id);
     setOrders(old=>[...old.filter(item=>String(item.id).startsWith("DEMO-")||String(item.id).startsWith("FALLBACK-")),...fresh]);
    }
