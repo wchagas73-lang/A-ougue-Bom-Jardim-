@@ -344,77 +344,38 @@ export default function App(){
    setNotice("Status atualizado e registrado no histórico.");
   }catch(error){setNotice("Não foi possível atualizar o pedido: "+(error.message||"erro de conexão."))}
  }
- function printOrder(order){
+ async function printOrder(order){
   if(!order)return;
   const printWindow=window.open("","_blank","width=440,height=720");
   if(!printWindow){setNotice("O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente novamente.");return}
+  printWindow.document.write("<!doctype html><html lang='pt-BR'><head><meta charset='utf-8'><title>Preparando pedido...</title></head><body style='font-family:Arial;padding:20px;font-weight:bold'>Carregando itens do pedido para impressão...</body></html>");
   const escapeHtml=value=>String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
-  const items=(order.items||[]).map(item=>{
+  let orderItems=Array.isArray(order.items)?order.items:[];
+  if(orderItems.length===0&&supabase&&order.id&&!String(order.id).startsWith("DEMO-")&&!String(order.id).startsWith("FALLBACK-")){
+   try{
+    const {data,error}=await supabase.from("order_items").select("id,product_id,product_name,quantity,unit,unit_price,line_total").eq("order_id",order.id);
+    if(error)throw error;
+    orderItems=(data||[]).map(item=>({id:item.id,productId:item.product_id,name:item.product_name,qty:Number(item.quantity),unit:item.unit||"un.",price:Number(item.unit_price),total:Number(item.line_total)}));
+   }catch(error){
+    console.error("Falha ao recuperar itens para impressão:",error);
+    setNotice("Não foi possível recuperar os produtos deste pedido. Verifique a conexão e tente imprimir novamente.");
+    printWindow.close();
+    return;
+   }
+  }
+  const items=orderItems.map(item=>{
    const qty=Number(item.qty??item.quantity??0),unit=item.unit||"un.",price=Number(item.price??item.unit_price??0);
-   return "<tr><td>"+escapeHtml(item.name)+"<small>"+qty.toLocaleString("pt-BR")+" "+escapeHtml(unit)+" × "+money(price)+"/"+escapeHtml(unit)+"</small></td><td>"+money(Number(item.total??price*qty))+"</td></tr>";
+   const name=item.name??item.product_name??"Produto";
+   const lineTotal=Number(item.total??item.line_total??price*qty);
+   return "<tr><td><b>"+escapeHtml(name)+"</b><small>"+qty.toLocaleString("pt-BR")+" "+escapeHtml(unit)+" × "+money(price)+"/"+escapeHtml(unit)+"</small></td><td>"+money(lineTotal)+"</td></tr>";
   }).join("");
   const cash=Number(String(order.customer?.cashReceived??"").replace(",","."));
   const change=Number.isFinite(cash)?Math.max(0,cash-Number(order.total||0)):Number(order.customer?.changeDue||0);
   const updatedAt=order.updatedAt||order.statusHistory?.[order.statusHistory.length-1]?.at||order.createdAt;
   const cashInfo=order.payment==="Dinheiro"&&order.customer?.cashReceived!==""&&order.customer?.cashReceived!=null?"<p>Cliente paga com: <b>"+money(cash)+"</b></p><p>Troco a devolver: <b>"+money(change)+"</b></p>":"";
-  const html="<!doctype html><html lang='pt-BR'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Pedido "+escapeHtml(order.displayId||order.id)+"</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111;margin:0;padding:18px;font-size:13px}h1{font-size:19px;margin:0 0 5px}h2{font-size:14px;margin:18px 0 7px;border-bottom:1px solid #bbb;padding-bottom:5px}p{margin:5px 0;line-height:1.35}.muted{color:#555;font-size:11px}.status{font-weight:bold;border:1px solid #888;border-radius:4px;padding:3px 6px;display:inline-block;margin:7px 0}table{width:100%;border-collapse:collapse;margin-top:7px}td{padding:7px 2px;border-bottom:1px solid #ddd;vertical-align:top}td:last-child{text-align:right;white-space:nowrap;font-weight:bold}small{display:block;color:#555;font-size:11px;margin-top:3px}.total{font-size:17px;font-weight:bold;border-top:2px solid #111;padding-top:9px;margin-top:10px}.footer{margin-top:18px;border-top:1px dashed #888;padding-top:9px;font-size:11px}@media print{body{padding:0}}</style></head><body><h1>🥩 AÇOUGUE BOM JARDIM</h1><p><b>PEDIDO "+escapeHtml(order.displayId||order.id)+"</b></p><span class='status'>"+escapeHtml(order.status||"Novo")+"</span><p class='muted'>Atualizado em: "+escapeHtml(new Date(updatedAt).toLocaleString("pt-BR"))+"</p><h2>CLIENTE</h2><p><b>"+escapeHtml(order.customer?.name||"Não informado")+"</b></p><p>Telefone: "+escapeHtml(order.customer?.phone||"Não informado")+"</p><p>Endereço: "+escapeHtml(order.customer?.address||"Não informado")+"</p>"+(order.customer?.reference?"<p>Referência: "+escapeHtml(order.customer.reference)+"</p>":"")+"<h2>PRODUTOS</h2><table>"+items+"</table><h2>RESUMO</h2><p>Produtos: <b>"+money(order.subtotal)+"</b></p><p>Entrega: <b>"+money(order.fee)+"</b></p><p class='total'>TOTAL: "+money(order.total)+"</p><h2>PAGAMENTO</h2><p>Forma de pagamento: <b>"+escapeHtml(order.payment||"Não informado")+"</b></p>"+cashInfo+(order.customer?.notes?"<p>Observações: "+escapeHtml(order.customer.notes)+"</p>":"")+"<div class='footer'>Documento gerado pelo painel do Açougue Bom Jardim.</div><script>window.onload=function(){window.focus();window.print();};</script></body></html>";
+  const itemsContent=items||"<tr><td colspan='2'><b>Itens não encontrados neste pedido. Consulte o painel antes de concluir a impressão.</b></td></tr>";
+  const html="<!doctype html><html lang='pt-BR'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Pedido "+escapeHtml(order.displayId||order.id)+"</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#000;margin:0;padding:18px;font-size:13px;font-weight:700}h1{font-size:19px;margin:0 0 5px;font-weight:900}h2{font-size:14px;margin:18px 0 7px;border-bottom:1px solid #111;padding-bottom:5px;font-weight:900}p{margin:5px 0;line-height:1.35}b,strong{font-weight:900}.muted{color:#222;font-size:11px}.status{font-weight:900;border:1px solid #111;border-radius:4px;padding:3px 6px;display:inline-block;margin:7px 0}table{width:100%;border-collapse:collapse;margin-top:7px}td{padding:7px 2px;border-bottom:1px solid #777;vertical-align:top;font-weight:700}td:last-child{text-align:right;white-space:nowrap;font-weight:900}small{display:block;color:#111;font-size:11px;font-weight:700;margin-top:3px}.total{font-size:17px;font-weight:900;border-top:2px solid #111;padding-top:9px;margin-top:10px}.footer{margin-top:18px;border-top:1px dashed #555;padding-top:9px;font-size:11px;font-weight:700}@media print{body{padding:0}}</style></head><body><h1>🥩 AÇOUGUE BOM JARDIM</h1><p><b>PEDIDO "+escapeHtml(order.displayId||order.id)+"</b></p><span class='status'>"+escapeHtml(order.status||"Novo")+"</span><p class='muted'>Atualizado em: "+escapeHtml(new Date(updatedAt).toLocaleString("pt-BR"))+"</p><h2>CLIENTE</h2><p><b>"+escapeHtml(order.customer?.name||"Não informado")+"</b></p><p>Telefone: "+escapeHtml(order.customer?.phone||"Não informado")+"</p><p>Endereço: "+escapeHtml(order.customer?.address||"Não informado")+"</p>"+(order.customer?.reference?"<p>Referência: "+escapeHtml(order.customer.reference)+"</p>":"")+"<h2>PRODUTOS</h2><table>"+itemsContent+"</table><h2>RESUMO</h2><p>Produtos: <b>"+money(order.subtotal)+"</b></p><p>Entrega: <b>"+money(order.fee)+"</b></p><p class='total'>TOTAL: "+money(order.total)+"</p><h2>PAGAMENTO</h2><p>Forma de pagamento: <b>"+escapeHtml(order.payment||"Não informado")+"</b></p>"+cashInfo+(order.customer?.notes?"<p>Observações: "+escapeHtml(order.customer.notes)+"</p>":"")+"<div class='footer'>Documento gerado pelo painel do Açougue Bom Jardim.</div><script>window.onload=function(){window.focus();window.print();};</script></body></html>";
   printWindow.document.open();printWindow.document.write(html);printWindow.document.close();
- }
- async function handleProductImage(file){
-  if(!file)return;
-  if(!file.type?.startsWith("image/")){setNotice("Selecione uma foto ou imagem da galeria.");return}
-  if(file.size>8*1024*1024){setNotice("A imagem deve ter no máximo 8 MB.");return}
-  if(!supabase||!profile?.store_id){setNotice("Entre novamente no painel da loja para enviar imagens.");return}
-  setDataLoading(true);
-  setNotice("Enviando foto...");
-  try{
-   const extension=(file.name.split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"")||"jpg";
-   const path=profile.store_id+"/"+crypto.randomUUID()+"."+extension;
-   const {error}=await supabase.storage.from("product-images").upload(path,file,{cacheControl:"3600",upsert:false,contentType:file.type});
-   if(error)throw error;
-   const {data}=supabase.storage.from("product-images").getPublicUrl(path);
-   if(!data?.publicUrl)throw new Error("O Supabase não retornou o endereço público da imagem.");
-   setEditing(current=>({...current,imageUrl:data.publicUrl}));
-   setNotice("Foto enviada. Agora toque em Salvar produto para gravar no catálogo.");
-  }catch(error){
-   setNotice("Falha ao enviar a foto: "+(error?.message||"confira se a migração 0008 foi executada no Supabase."));
-  }finally{setDataLoading(false)}
- }
- async function saveProduct(){
-  if(!profile?.store_id){setNotice("Sua sessão expirou. Entre novamente no painel.");return}
-  const name=String(editing?.name||"").trim();
-  const price=Number(String(editing?.price??"").replace(",","."));
-  if(!name){setNotice("Informe o nome do produto.");return}
-  if(!Number.isFinite(price)||price<0){setNotice("Informe um preço válido.");return}
-  setDataLoading(true);
-  try{
-   const isOfficial=typeof editing.id==="string"&&/^[0-9a-f-]{36}$/i.test(editing.id);
-   const saved=await saveAdminProduct({...editing,name,price,id:isOfficial?editing.id:undefined},profile.store_id);
-   setProducts(old=>{
-    const withoutEditedDemo=old.filter(p=>p.id!==editing.id);
-    const existingIndex=withoutEditedDemo.findIndex(p=>p.id===saved.id);
-    if(existingIndex>=0)return withoutEditedDemo.map(p=>p.id===saved.id?saved:p);
-    return [...withoutEditedDemo,saved];
-   });
-   setEditing(null);
-   setNotice(isOfficial?"Produto atualizado com sucesso no catálogo.":"Produto cadastrado no banco e pronto para edição no catálogo.");
-  }catch(error){
-   setNotice("Não foi possível salvar o produto: "+(error?.message||"verifique sua conexão e as permissões da conta."));
-  }finally{setDataLoading(false)}
- }
- async function deleteProduct(id){
-  const product=products.find(p=>p.id===id);
-  if(!product)return;
-  if(!window.confirm('Excluir "'+product.name+'" do catálogo? Essa ação não pode ser desfeita.'))return;
-  const isOfficial=typeof id==="string"&&/^[0-9a-f-]{36}$/i.test(id);
-  setDataLoading(true);
-  try{
-   if(isOfficial)await deleteAdminProduct(id,profile.store_id);
-   setProducts(old=>old.filter(p=>p.id!==id));
-   setNotice(isOfficial?"Produto excluído do catálogo online.":"Produto fictício removido desta demonstração.");
-  }catch(error){
-   setNotice("Não foi possível excluir "+product.name+": "+(error?.message||"verifique se há pedidos ou registros vinculados a este produto."));
-  }finally{setDataLoading(false)}
  }
  function newProduct(){setEditing({name:"",category:"Boi",price:"",unit:"kg",note:"",available:true,featured:false})}
  return <div className="app-shell">
