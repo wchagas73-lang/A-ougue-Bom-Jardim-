@@ -460,22 +460,19 @@ td{border-color:var(--line)}
 }
 
 
-/* Botão de escolha: mantém o texto inteiro visível em telas estreitas. */
+/* Botão de adicionar: ícone de mais no catálogo. */
 .product-bottom .choose-product-button{
   display:inline-flex !important;
   align-items:center;
   justify-content:center;
-  flex:0 0 auto !important;
-  width:max-content !important;
-  min-width:82px !important;
+  flex:0 0 36px !important;
+  width:36px !important;
+  min-width:36px !important;
   height:36px !important;
-  padding:0 12px !important;
-  white-space:nowrap !important;
-  overflow:visible !important;
-  font-size:11px !important;
-  line-height:1 !important;
+  padding:0 !important;
+  white-space:nowrap;
+  overflow:visible;
 }
 @media(max-width:520px){
-  .product-bottom{flex-wrap:wrap;}
-  .product-bottom .choose-product-button{min-width:82px !important;}
+  .product-bottom .choose-product-button{flex-basis:34px !important;width:34px !important;min-width:34px !important;height:34px !important;}
 }
