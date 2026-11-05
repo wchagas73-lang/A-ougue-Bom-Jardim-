@@ -143,7 +143,8 @@ export default function App(){
     (customer.notes?"\n📝 Observações: "+customer.notes:"")+"\n\n❤️ Obrigado pela preferência!\nPedido fictício para demonstração.";
    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",reference:"",payment:"Pix",change:"",notes:""});
    setNotice("Pedido de demonstração criado! Abrindo o WhatsApp da loja.");
-   window.location.assign("https://wa.me/"+STORE_WHATSAPP+"?text="+encodeURIComponent(whatsappMessage));
+   const boldWhatsAppMessage=whatsappMessage.split("\n").map(line=>line.trim()?"*"+line+"*":line).join("\n");
+   window.location.assign("https://wa.me/"+STORE_WHATSAPP+"?text="+encodeURIComponent(boldWhatsAppMessage));
    return;
   }
   if(!supabase||!catalogLoaded||!cart.every(p=>typeof p.id==="string")){setNotice("O catálogo oficial ainda não está disponível para pedidos online. Aguarde a loja cadastrar os produtos no banco.");return}
@@ -181,7 +182,8 @@ export default function App(){
     (customer.notes?"\n📝 Observações: "+customer.notes:"")+"\n\n❤️ Obrigado pela preferência!";
    const whatsappNumber=STORE_WHATSAPP;
    if(!whatsappNumber)throw new Error("O WhatsApp de recebimento da loja não está configurado.");
-   const whatsappUrl="https://wa.me/"+whatsappNumber+"?text="+encodeURIComponent(whatsappMessage);
+   const boldWhatsAppMessage=whatsappMessage.split("\n").map(line=>line.trim()?"*"+line+"*":line).join("\n");
+   const whatsappUrl="https://wa.me/"+whatsappNumber+"?text="+encodeURIComponent(boldWhatsAppMessage);
    window.location.assign(whatsappUrl);
    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",reference:"",payment:"Pix",change:"",notes:""});
    setNotice("Pedido #"+data.order_number+" registrado com sucesso. Abrindo o WhatsApp da loja...");
@@ -211,7 +213,8 @@ export default function App(){
    try{localStorage.setItem("bomjardim_orders",JSON.stringify(nextOrders))}catch(storageError){console.warn("Não foi possível salvar a cópia local do pedido.",storageError)}
    const whatsappNumber=STORE_WHATSAPP;
    if(whatsappNumber){
-    window.location.assign("https://wa.me/"+whatsappNumber+"?text="+encodeURIComponent(fallbackMessage));
+    const boldFallbackMessage=fallbackMessage.split("\n").map(line=>line.trim()?"*"+line+"*":line).join("\n");
+    window.location.assign("https://wa.me/"+whatsappNumber+"?text="+encodeURIComponent(boldFallbackMessage));
     setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",reference:"",payment:"Pix",change:"",notes:""});
     setNotice("Banco indisponível. Pedido encaminhado ao WhatsApp como envio alternativo; confira e registre no painel.");
    }else{
