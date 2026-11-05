@@ -476,3 +476,84 @@ td{border-color:var(--line)}
 @media(max-width:520px){
   .product-bottom .choose-product-button{flex-basis:34px !important;width:34px !important;min-width:34px !important;height:34px !important;}
 }
+
+
+/* Correção responsiva exclusiva da escolha de peso/valor no cardápio */
+.product-card,
+.product-card .product-info,
+.product-card .product-bottom,
+.product-card .purchase-choice {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.product-card .purchase-choice {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 11px;
+  padding: 12px;
+  margin: 12px 0 0;
+  overflow-x: clip;
+  overflow-wrap: anywhere;
+}
+.product-card .purchase-choice-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  min-width: 0;
+  gap: 7px;
+}
+.product-card .purchase-choice-tabs button {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 42px;
+  padding: 8px 6px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+  text-align: center;
+}
+.product-card .purchase-choice > label {
+  width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+.product-card .purchase-choice > label input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.product-card .purchase-estimate {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+.product-card .purchase-choice-actions {
+  display: grid;
+  grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+  width: 100%;
+  min-width: 0;
+  gap: 7px;
+}
+.product-card .purchase-choice-actions button {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 42px;
+  padding: 9px 7px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+@media (max-width: 380px) {
+  .product-card .purchase-choice { padding: 10px; }
+  .product-card .purchase-choice-tabs { gap: 5px; }
+  .product-card .purchase-choice-tabs button { font-size: 10px; padding-inline: 4px; }
+  .product-card .purchase-choice-actions { grid-template-columns: minmax(0, 1fr); }
+}
