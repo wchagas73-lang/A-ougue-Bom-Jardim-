@@ -377,6 +377,49 @@ export default function App(){
   const html="<!doctype html><html lang='pt-BR'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Pedido "+escapeHtml(order.displayId||order.id)+"</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#000;margin:0;padding:18px;font-size:13px;font-weight:700}h1{font-size:19px;margin:0 0 5px;font-weight:900}h2{font-size:14px;margin:18px 0 7px;border-bottom:1px solid #111;padding-bottom:5px;font-weight:900}p{margin:5px 0;line-height:1.35}b,strong{font-weight:900}.muted{color:#222;font-size:11px}.status{font-weight:900;border:1px solid #111;border-radius:4px;padding:3px 6px;display:inline-block;margin:7px 0}table{width:100%;border-collapse:collapse;margin-top:7px}td{padding:7px 2px;border-bottom:1px solid #777;vertical-align:top;font-weight:700}td:last-child{text-align:right;white-space:nowrap;font-weight:900}small{display:block;color:#111;font-size:11px;font-weight:700;margin-top:3px}.total{font-size:17px;font-weight:900;border-top:2px solid #111;padding-top:9px;margin-top:10px}.footer{margin-top:18px;border-top:1px dashed #555;padding-top:9px;font-size:11px;font-weight:700}@media print{body{padding:0}}</style></head><body><h1>🥩 AÇOUGUE BOM JARDIM</h1><p><b>PEDIDO "+escapeHtml(order.displayId||order.id)+"</b></p><span class='status'>"+escapeHtml(order.status||"Novo")+"</span><p class='muted'>Atualizado em: "+escapeHtml(new Date(updatedAt).toLocaleString("pt-BR"))+"</p><h2>CLIENTE</h2><p><b>"+escapeHtml(order.customer?.name||"Não informado")+"</b></p><p>Telefone: "+escapeHtml(order.customer?.phone||"Não informado")+"</p><p>Endereço: "+escapeHtml(order.customer?.address||"Não informado")+"</p>"+(order.customer?.reference?"<p>Referência: "+escapeHtml(order.customer.reference)+"</p>":"")+"<h2>PRODUTOS</h2><table>"+itemsContent+"</table><h2>RESUMO</h2><p>Produtos: <b>"+money(order.subtotal)+"</b></p><p>Entrega: <b>"+money(order.fee)+"</b></p><p class='total'>TOTAL: "+money(order.total)+"</p><h2>PAGAMENTO</h2><p>Forma de pagamento: <b>"+escapeHtml(order.payment||"Não informado")+"</b></p>"+cashInfo+(order.customer?.notes?"<p>Observações: "+escapeHtml(order.customer.notes)+"</p>":"")+"<div class='footer'>Documento gerado pelo painel do Açougue Bom Jardim.</div><script>window.onload=function(){window.focus();window.print();};</script></body></html>";
   printWindow.document.open();printWindow.document.write(html);printWindow.document.close();
  }
+ async function handleProductImage(file){
+  if(!file)return;
+  if(!file.type?.startsWith("image/")){setNotice("Selecione um arquivo de imagem válido.");return}
+  if(file.size>8*1024*1024){setNotice("A imagem deve ter no máximo 8 MB.");return}
+  try{
+   const dataUrl=await new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result);
+    reader.onerror=()=>reject(new Error("Não foi possível ler a imagem."));
+    reader.readAsDataURL(file);
+   });
+   const image=await new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>resolve(img);
+    img.onerror=()=>reject(new Error("Não foi possível abrir a imagem."));
+    img.src=dataUrl;
+   });
+   const scale=Math.min(1,1200/Math.max(image.width,image.height));
+   const canvas=document.createElement("canvas");
+   canvas.width=Math.max(1,Math.round(image.width*scale));
+   canvas.height=Math.max(1,Math.round(image.height*scale));
+   canvas.getContext("2d").drawImage(image,0,0,canvas.width,canvas.height);
+   setEditing(current=>current?({...current,imageUrl:canvas.toDataURL("image/jpeg",0.78)}):current);
+   setNotice("Imagem adicionada ao produto.");
+  }catch(error){setNotice(error.message||"Não foi possível processar a imagem.")}
+ }
+ async function saveProduct(){
+  if(!editing)return;
+  const name=String(editing.name||"").trim();
+  const price=Number(String(editing.price??"").replace(",","."));
+  if(name.length<2){setNotice("Informe o nome do produto.");return}
+  if(!Number.isFinite(price)||price<0){setNotice("Informe um preço válido.");return}
+  if(!profile?.store_id){setNotice("Não foi possível identificar a loja. Saia e entre novamente no painel.");return}
+  setDataLoading(true);
+  try{
+   const saved=await saveAdminProduct({...editing,name,price},profile.store_id);
+   setProducts(old=>editing.id?old.map(product=>product.id===editing.id?saved:product):[saved,...old]);
+   setEditing(null);
+   setNotice(editing.id?"Produto atualizado com sucesso no catálogo online.":"Produto cadastrado com sucesso no catálogo online.");
+  }catch(error){
+   setNotice("Não foi possível salvar o produto: "+(error.message||"verifique a conexão e tente novamente."));
+  }finally{setDataLoading(false)}
+ }
  function newProduct(){setEditing({name:"",category:"Boi",price:"",unit:"kg",note:"",available:true,featured:false})}
  return <div className="app-shell">
   <header className="topbar"><a className="brand" href="#" onClick={e=>{e.preventDefault();setArea("store")}}><span className="brand-mark"><img src="/logo-bom-jardim.jpg" alt="Logo oficial Açougue Bom Jardim"/></span><span><strong>Açougue Bom Jardim</strong><small>QUALIDADE E CONFIANÇA</small></span></a><div className="top-actions">{area==="store"?<><button className="admin-link" onClick={()=>{setArea("admin");setAdminTab("overview")}}> <LayoutDashboard size={16}/> Área da loja</button></>:<button className="admin-link" onClick={()=>setArea("store")}><ArrowLeft size={16}/> Ver cardápio</button>}</div></header>
