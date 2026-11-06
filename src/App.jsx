@@ -446,20 +446,27 @@ export default function App(){
     img.onerror=()=>reject(new Error("Não foi possível abrir a imagem."));
     img.src=dataUrl;
    });
-   // Imagens ficam no campo image_url do banco; mantenha o arquivo pequeno
-   // para não transformar o catálogo público em uma resposta pesada.
-   const scale=Math.min(1,640/Math.max(image.width,image.height));
-   const canvas=document.createElement("canvas");
-   canvas.width=Math.max(1,Math.round(image.width*scale));
-   canvas.height=Math.max(1,Math.round(image.height*scale));
-   const context=canvas.getContext("2d");
+   // Padrão equilibrado: até 640 px, JPEG otimizado e arquivo final de até 120 KB.
+   // Se a foto for muito detalhada, reduzimos a dimensão gradualmente para preservar qualidade.
+   const contextCanvas=document.createElement("canvas");
+   const context=contextCanvas.getContext("2d");
    if(!context)throw new Error("Não foi possível preparar a imagem neste aparelho.");
-   context.drawImage(image,0,0,canvas.width,canvas.height);
-   let compressed=canvas.toDataURL("image/jpeg",0.62);
-   if(compressed.length>110*1024)compressed=canvas.toDataURL("image/jpeg",0.48);
-   if(compressed.length>110*1024)throw new Error("Esta imagem ainda ficou muito pesada. Escolha um print mais leve ou recorte a imagem antes de enviar.");
+   let compressed="";
+   for(const maxSide of [640,560,480,400]){
+    const scale=Math.min(1,maxSide/Math.max(image.width,image.height));
+    contextCanvas.width=Math.max(1,Math.round(image.width*scale));
+    contextCanvas.height=Math.max(1,Math.round(image.height*scale));
+    context.clearRect(0,0,contextCanvas.width,contextCanvas.height);
+    context.drawImage(image,0,0,contextCanvas.width,contextCanvas.height);
+    for(const quality of [0.76,0.68,0.60,0.54]){
+     compressed=contextCanvas.toDataURL("image/jpeg",quality);
+     if(compressed.length<=120*1024)break;
+    }
+    if(compressed.length<=120*1024)break;
+   }
+   if(!compressed||compressed.length>120*1024)throw new Error("Não foi possível ajustar esta imagem ao limite leve de 120 KB.");
    setEditing(current=>current?({...current,imageUrl:compressed}):current);
-   setNotice("Imagem otimizada e adicionada ao produto.");
+   setNotice("Imagem ajustada: qualidade equilibrada, até 640 px e no máximo 120 KB.");
   }catch(error){setNotice(error.message||"Não foi possível processar a imagem.")}
  }
  async function saveProduct(){
