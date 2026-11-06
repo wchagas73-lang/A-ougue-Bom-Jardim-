@@ -7,7 +7,7 @@ const categoryName = (row) => row.categories?.name || "Diversos";
 // Normaliza espaços acidentais antes de URLs de imagem, inclusive quando foram codificados como %20.
 const normalizeImageUrl = (value) => {
   if (typeof value !== "string") return "";
-  return value.trim().replace(/^(?:%20)+(?=https?:\\/\\/)/i, "");
+  return value.trim().replace(/^(?:%20)+(?=https?:\/\/)/i, "");
 };
 
 export async function loadPublicCatalog() {
