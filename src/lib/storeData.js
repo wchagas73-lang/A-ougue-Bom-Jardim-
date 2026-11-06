@@ -45,17 +45,42 @@ export async function loadAdminCatalog(storeId) {
     .eq("store_id", storeId)
     .order("name");
   if (error) throw error;
-  return (data || []).map((p) => ({
-    id: p.id,
-    name: p.name,
-    category: categoryName(p),
-    price: Number(p.price),
-    unit: p.unit,
-    note: p.description || "",
-    imageUrl: p.image_url || "",
-    available: p.available && p.active,
-    featured: false,
+  const rows = data || [];
+  const products = rows.map((p) => ({
+    id: p.id, name: p.name, category: categoryName(p),
+    price: Number(p.price), unit: p.unit, note: p.description || "",
+    imageUrl: p.image_url || "", available: p.available && p.active, featured: false,
   }));
+
+  // Migra fotos antigas em Base64 para o Storage sem alterar o produto correspondente.
+  const legacyRows = rows.filter((p) =>
+    typeof p.image_url === "string" && p.image_url.startsWith("data:image/")
+  );
+  for (let index = 0; index < legacyRows.length; index += 3) {
+    const batch = legacyRows.slice(index, index + 3);
+    await Promise.all(batch.map(async (row) => {
+      try {
+        const response = await fetch(row.image_url);
+        if (!response.ok) throw new Error("Não foi possível ler a imagem antiga.");
+        const blob = await response.blob();
+        const extension = blob.type === "image/png" ? "png" : "jpg";
+        const imagePath = storeId + "/" + row.id + "-restored-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7) + "." + extension;
+        const { error: uploadError } = await supabase.storage.from("product-images").upload(imagePath, blob, {
+          contentType: blob.type || "image/jpeg", cacheControl: "31536000", upsert: false,
+        });
+        if (uploadError) throw uploadError;
+        const publicUrl = supabase.storage.from("product-images").getPublicUrl(imagePath).data.publicUrl;
+        const { error: updateError } = await supabase.from("products").update({ image_url: publicUrl })
+          .eq("id", row.id).eq("store_id", storeId);
+        if (updateError) throw updateError;
+        const product = products.find((item) => item.id === row.id);
+        if (product) product.imageUrl = publicUrl;
+      } catch (error) {
+        console.warn("Não foi possível recuperar a foto antiga do produto " + row.name + ".", error);
+      }
+    }));
+  }
+  return products;
 }
 
 
