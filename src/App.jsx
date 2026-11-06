@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Beef, Search, ShoppingBag, ShoppingCart, Plus, Minus, X, Clock3, MapPin, ShieldCheck, LayoutDashboard, Package, ClipboardList, Settings, Tag, Pencil, Trash2, Eye, EyeOff, TrendingUp, Users, Truck, CheckCircle2, LogOut, ArrowLeft, Save, ImagePlus, LockKeyhole, Copy, Printer } from "lucide-react";
 import { supabase } from "./lib/supabase";
 import { loadPublicCatalog, loadAdminCatalog, saveAdminProduct, deleteAdminProduct, loadAdminOrders, updateAdminOrderStatus, updateAdminOrderItems, deleteAdminOrder } from "./lib/storeData";
