@@ -90,8 +90,8 @@ export default function App(){
   const safe=source.map(normalizeProduct).filter(Boolean);
   return safe.length?safe:initialProducts;
  });
- const [orders,setOrders]=useState(()=>load("bomjardim_orders",[]));
- const [delivery,setDelivery]=useState(()=>{const saved=load("bomjardim_delivery",null);if(!saved)return {mode:"manual",fee:0,freeOver:150,paused:false,estimatedTime:"40 a 60 minutos"};if(saved.mode==="fixed"&&Number(saved.fee)===7&&saved.demoFee!==false)return {...saved,mode:"manual",fee:0,demoFee:false};return saved;});
+ const [orders,setOrders]=useState(()=>{const saved=load("bomjardim_orders",[]);return Array.isArray(saved)?saved.filter(order=>order&&typeof order==="object"):[];});
+ const [delivery,setDelivery]=useState(()=>{const saved=load("bomjardim_delivery",null);if(!saved||typeof saved!=="object"||Array.isArray(saved))return {mode:"manual",fee:0,freeOver:150,paused:false,estimatedTime:"40 a 60 minutos"};if(saved.mode==="fixed"&&Number(saved.fee)===7&&saved.demoFee!==false)return {...saved,mode:"manual",fee:0,demoFee:false};return {...{mode:"manual",fee:0,freeOver:150,paused:false,estimatedTime:"40 a 60 minutos"},...saved};});
  const [category,setCategory]=useState("Todos"),[search,setSearch]=useState(""),[cart,setCart]=useState([]),[cartOpen,setCartOpen]=useState(false);
  const [configuringProduct,setConfiguringProduct]=useState(null),[purchaseMode,setPurchaseMode]=useState("weight"),[purchaseInput,setPurchaseInput]=useState("0.5");
  const [customer,setCustomer]=useState({name:"",phone:"",address:"",reference:"",payment:"Pix",change:"",notes:""});
