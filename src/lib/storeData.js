@@ -4,6 +4,12 @@ export const STORE_SLUG = "acougue-bom-jardim";
 
 const categoryName = (row) => row.categories?.name || "Diversos";
 
+// Normaliza espaços acidentais antes de URLs de imagem, inclusive quando foram codificados como %20.
+const normalizeImageUrl = (value) => {
+  if (typeof value !== "string") return "";
+  return value.trim().replace(/^(?:%20)+(?=https?:\\/\\/)/i, "");
+};
+
 export async function loadPublicCatalog() {
   if (!supabase) return { products: [], store: null };
   const { data, error } = await supabase
@@ -30,7 +36,7 @@ export async function loadPublicCatalog() {
       price: Number(p.product_price),
       unit: p.product_unit,
       note: p.product_description || "",
-      imageUrl: p.product_image_url || "",
+      imageUrl: normalizeImageUrl(p.product_image_url),
       available: p.product_available,
       featured: false,
     })),
@@ -49,7 +55,7 @@ export async function loadAdminCatalog(storeId) {
   const products = rows.map((p) => ({
     id: p.id, name: p.name, category: categoryName(p),
     price: Number(p.price), unit: p.unit, note: p.description || "",
-    imageUrl: p.image_url || "", available: p.available && p.active, featured: false,
+    imageUrl: normalizeImageUrl(p.image_url), available: p.available && p.active, featured: false,
   }));
 
   // Migra fotos antigas em Base64 para o Storage sem alterar o produto correspondente.
@@ -191,7 +197,7 @@ export async function saveAdminProduct(product, storeId) {
     .single();
   if (categoryError) throw categoryError;
 
-  let imageUrl = product.imageUrl || null;
+  let imageUrl = normalizeImageUrl(product.imageUrl) || null;
   // Fotos novas vão para o Storage; nunca gravamos Base64 no catálogo/banco.
   if (typeof imageUrl === "string" && imageUrl.startsWith("data:image/")) {
     const imageResponse = await fetch(imageUrl);
