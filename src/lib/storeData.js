@@ -166,6 +166,24 @@ export async function saveAdminProduct(product, storeId) {
     .single();
   if (categoryError) throw categoryError;
 
+  let imageUrl = product.imageUrl || null;
+  // Fotos novas vão para o Storage; nunca gravamos Base64 no catálogo/banco.
+  if (typeof imageUrl === "string" && imageUrl.startsWith("data:image/")) {
+    const imageResponse = await fetch(imageUrl);
+    const imageBlob = await imageResponse.blob();
+    const extension = imageBlob.type === "image/png" ? "png" : "jpg";
+    const imagePath = `${storeId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+    const { error: uploadError } = await supabase.storage
+      .from("product-images")
+      .upload(imagePath, imageBlob, {
+        contentType: imageBlob.type || "image/jpeg",
+        cacheControl: "31536000",
+        upsert: false,
+      });
+    if (uploadError) throw new Error("Não foi possível enviar a foto otimizada: " + uploadError.message);
+    imageUrl = supabase.storage.from("product-images").getPublicUrl(imagePath).data.publicUrl;
+  }
+
   const payload = {
     store_id: storeId,
     category_id: categoryRow.id,
@@ -174,7 +192,7 @@ export async function saveAdminProduct(product, storeId) {
     price: Number(product.price),
     unit: product.unit === "un." ? "un." : "kg",
     available: product.available !== false,
-    image_url: product.imageUrl || null,
+    image_url: imageUrl,
     active: true,
   };
   const query = product.id && typeof product.id === "string"
