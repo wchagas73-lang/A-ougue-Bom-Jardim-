@@ -23,8 +23,8 @@ class AppErrorBoundary extends React.Component {
           color: "#29231d", background: "#fff"
         }
       },
-        React.createElement("h1", null, "Estamos ajustando o cardápio"),
-        React.createElement("p", null, "Ocorreu uma falha ao carregar esta tela. Atualize a página para tentar novamente."),
+        React.createElement("h1", null, "Não foi possível carregar o cardápio"),
+        React.createElement("p", null, "Ocorreu um erro inesperado ao abrir o cardápio. Toque abaixo para tentar novamente."),
         React.createElement("button", {
           onClick: () => window.location.reload(),
           style: { padding: "12px 20px", border: 0, borderRadius: "8px", background: "#245b3c", color: "#fff", fontWeight: 700 }
