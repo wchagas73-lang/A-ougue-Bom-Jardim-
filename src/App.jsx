@@ -446,13 +446,20 @@ export default function App(){
     img.onerror=()=>reject(new Error("Não foi possível abrir a imagem."));
     img.src=dataUrl;
    });
-   const scale=Math.min(1,1200/Math.max(image.width,image.height));
+   // Imagens ficam no campo image_url do banco; mantenha o arquivo pequeno
+   // para não transformar o catálogo público em uma resposta pesada.
+   const scale=Math.min(1,640/Math.max(image.width,image.height));
    const canvas=document.createElement("canvas");
    canvas.width=Math.max(1,Math.round(image.width*scale));
    canvas.height=Math.max(1,Math.round(image.height*scale));
-   canvas.getContext("2d").drawImage(image,0,0,canvas.width,canvas.height);
-   setEditing(current=>current?({...current,imageUrl:canvas.toDataURL("image/jpeg",0.78)}):current);
-   setNotice("Imagem adicionada ao produto.");
+   const context=canvas.getContext("2d");
+   if(!context)throw new Error("Não foi possível preparar a imagem neste aparelho.");
+   context.drawImage(image,0,0,canvas.width,canvas.height);
+   let compressed=canvas.toDataURL("image/jpeg",0.62);
+   if(compressed.length>110*1024)compressed=canvas.toDataURL("image/jpeg",0.48);
+   if(compressed.length>110*1024)throw new Error("Esta imagem ainda ficou muito pesada. Escolha um print mais leve ou recorte a imagem antes de enviar.");
+   setEditing(current=>current?({...current,imageUrl:compressed}):current);
+   setNotice("Imagem otimizada e adicionada ao produto.");
   }catch(error){setNotice(error.message||"Não foi possível processar a imagem.")}
  }
  async function saveProduct(){
