@@ -10,7 +10,7 @@ export async function loadPublicCatalog() {
     .from("public_store_catalog")
     // Não baixar imagens Base64 gigantes junto com todo o catálogo público.
     // As imagens serão substituídas por fotos leves/URLs; o catálogo permanece disponível.
-    .select("store_slug,store_name,store_whatsapp,business_hours,instagram,category_id,category_name,category_sort_order,product_id,product_name,product_description,product_price,product_unit,product_available")
+    .select("store_slug,store_name,store_whatsapp,business_hours,instagram,category_id,category_name,category_sort_order,product_id,product_name,product_description,product_price,product_unit,product_image_url,product_available")
     .eq("store_slug", STORE_SLUG)
     .order("category_sort_order", { ascending: true })
     .order("product_name", { ascending: true });
