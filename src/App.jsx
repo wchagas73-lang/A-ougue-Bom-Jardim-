@@ -3,34 +3,7 @@ import { Beef, Search, ShoppingBag, ShoppingCart, Plus, Minus, X, Clock3, MapPin
 import { supabase } from "./lib/supabase";
 import { loadPublicCatalog, loadAdminCatalog, saveAdminProduct, deleteAdminProduct, loadAdminOrders, updateAdminOrderStatus, updateAdminOrderItems, deleteAdminOrder } from "./lib/storeData";
 
-const initialProducts = [
-  {id:1,name:"Acém",category:"Boi",price:34.90,unit:"kg",note:"Ideal para panela e carne moída",available:true,featured:true},
-  {id:2,name:"Alcatra",category:"Boi",price:54.90,unit:"kg",note:"Corte macio para grelha e bifes",available:true,featured:true},
-  {id:3,name:"Contrafilé",category:"Boi",price:49.90,unit:"kg",note:"Sabor marcante e ótima maciez",available:true},
-  {id:4,name:"Picanha",category:"Boi",price:69.90,unit:"kg",note:"Clássico para o churrasco",available:true,featured:true},
-  {id:5,name:"Patinho",category:"Boi",price:39.90,unit:"kg",note:"Versátil para bifes e moída",available:true},
-  {id:6,name:"Músculo",category:"Boi",price:29.90,unit:"kg",note:"Perfeito para cozidos",available:true},
-  {id:7,name:"Carne moída",category:"Boi",price:36.90,unit:"kg",note:"Moída na hora",available:true},
-  {id:8,name:"Costela bovina",category:"Boi",price:32.90,unit:"kg",note:"Ideal para assar lentamente",available:true},
-  {id:9,name:"Bife à milanesa bovino",category:"Boi",price:39.90,unit:"kg",note:"Pronto para preparar",available:true},
-  {id:10,name:"Almôndegas",category:"Boi",price:35.90,unit:"kg",note:"Práticas para o dia a dia",available:true},
-  {id:11,name:"Costelinha suína",category:"Porco",price:27.90,unit:"kg",note:"Ótima assada ou na churrasqueira",available:true},
-  {id:12,name:"Bisteca suína",category:"Porco",price:24.90,unit:"kg",note:"Corte saboroso",available:true},
-  {id:13,name:"Lombo suíno",category:"Porco",price:29.90,unit:"kg",note:"Macio e versátil",available:true},
-  {id:14,name:"Linguiça toscana",category:"Porco",price:22.90,unit:"kg",note:"Perfeita para churrasco",available:true},
-  {id:15,name:"Bacon",category:"Porco",price:39.90,unit:"kg",note:"Para receitas e acompanhamentos",available:true},
-  {id:16,name:"Asa de frango",category:"Frango",price:19.90,unit:"kg",note:"Boa opção para churrasco",available:true},
-  {id:17,name:"Peito de frango",category:"Frango",price:21.90,unit:"kg",note:"Sem osso",available:true},
-  {id:18,name:"Coxa e sobrecoxa",category:"Frango",price:15.90,unit:"kg",note:"Saborosa e econômica",available:true},
-  {id:19,name:"Filé de peito",category:"Frango",price:25.90,unit:"kg",note:"Prático para grelhar",available:true},
-  {id:20,name:"Coxinha da asa",category:"Frango",price:21.90,unit:"kg",note:"Ideal para petiscos",available:true},
-  {id:26,name:"Frango assado",category:"Frango",price:0,unit:"un.",note:"Frango assado inteiro",available:true},
-  {id:21,name:"Kit Churrasco Família",category:"Churrasco",price:149.90,unit:"un.",note:"Seleção demonstrativa para a família",available:true,featured:true},
-  {id:22,name:"Kit Churrasco Especial",category:"Churrasco",price:199.90,unit:"un.",note:"Seleção demonstrativa especial",available:true},
-  {id:23,name:"Carvão 4 kg",category:"Diversos",price:18.90,unit:"un.",note:"Para completar o churrasco",available:true},
-  {id:24,name:"Pão de alho",category:"Diversos",price:12.90,unit:"un.",note:"Acompanhamento para churrasco",available:true},
-  {id:25,name:"Queijo coalho",category:"Diversos",price:29.90,unit:"kg",note:"Ótimo na churrasqueira",available:true}
-];
+
 const baseCategories = ["Todos","Boi","Porco","Aves","Churrasco","Diversos"];
 const money = n => Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const statusClass = value => ({ "Novo":"novo", "Aguardando resolução":"aguardando-resolucao", "Em preparação":"em-preparacao", "Saiu para entrega":"saiu-para-entrega", "Entregue":"entregue", "Retornando":"retornando", "Retornado":"retornando", "Cancelado":"cancelado" }[value] || "status-padrao");
