@@ -168,11 +168,11 @@ function Print-Order($Order, [string]$Html) {
     try {
       [IO.File]::WriteAllText($htmlPath, $Html, ([System.Text.UTF8Encoding]::new($false)))
       $fileUri = ([Uri]$htmlPath).AbsoluteUri
-      # Perfil isolado impede que uma janela Edge ja aberta capture o comando de impressao.
-      $copyProfilePath = $profilePath + "-copy-" + $copy
-        $arguments = '--headless --disable-gpu --no-first-run --no-default-browser-check --disable-extensions --no-pdf-header-footer --user-data-dir="' + $copyProfilePath + '" --print-to-printer="' + $PrinterName + '" "' + $fileUri + '"'
       # O automatico imprime duas vias completas; o botao manual permanece inalterado.
       for ($copy = 1; $copy -le 2; $copy++) {
+        # Cada via usa perfil proprio para abrir uma instancia independente do Edge.
+        $copyProfilePath = $profilePath + "-copy-" + $copy
+        $arguments = '--headless --disable-gpu --no-first-run --no-default-browser-check --disable-extensions --no-pdf-header-footer --user-data-dir="' + $copyProfilePath + '" --print-to-printer="' + $PrinterName + '" "' + $fileUri + '"'
         $process = Start-Process -FilePath $edgePath -ArgumentList $arguments -PassThru -WindowStyle Hidden
         if (!$process.WaitForExit(60000)) {
           try { $process.Kill() } catch {}
