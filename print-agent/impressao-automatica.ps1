@@ -70,7 +70,7 @@ function Wrap-Text([string]$Value, [int]$Width = 48) {
   return $result
 }
 function Money([object]$Value) {
-  $amount = 0.0
+  $amount = [decimal]0
   if ($Value -is [string]) {
     $parsed = [decimal]::TryParse([string]$Value, [Globalization.NumberStyles]::Any, [Globalization.CultureInfo]::InvariantCulture, [ref]$amount)
     if (!$parsed) { throw "Valor monetario invalido." }
@@ -174,7 +174,7 @@ function Print-Order($Order) {
   # Grava o ID somente depois que os dados foram enviados; evita impressao duplicada em novas tentativas.
   $printed += $id
   $temp = $PrintedFile + ".tmp"
-  ConvertTo-Json -InputObject (,$printed) -Depth 3 | Set-Content -Path $temp -Encoding UTF8
+  ConvertTo-Json -InputObject @($printed) -Depth 3 | Set-Content -Path $temp -Encoding UTF8
   Move-Item -Path $temp -Destination $PrintedFile -Force
   Write-Log ("Impresso " + $id)
   return @{ success = $true; alreadyPrinted = $false }
