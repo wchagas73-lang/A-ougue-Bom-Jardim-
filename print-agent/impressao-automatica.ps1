@@ -11,6 +11,21 @@ $LogFile = Join-Path $DataDir "service.log"
 New-Item -ItemType Directory -Path $DataDir -Force | Out-Null
 if (!(Test-Path $PrintedFile)) { "[]" | Set-Content -Path $PrintedFile -Encoding UTF8 }
 
+# Registra o serviço para iniciar junto com o Windows, sem exigir nova configuração.
+try {
+  $startup = [Environment]::GetFolderPath("Startup")
+  $shortcutPath = Join-Path $startup "Impressao automatica - Acougue Bom Jardim.lnk"
+  if (!(Test-Path $shortcutPath)) {
+    $shell = New-Object -ComObject WScript.Shell
+    $shortcut = $shell.CreateShortcut($shortcutPath)
+    $shortcut.TargetPath = Join-Path $PSScriptRoot "iniciar-impressao.bat"
+    $shortcut.WorkingDirectory = $PSScriptRoot
+    $shortcut.WindowStyle = 7
+    $shortcut.Description = "Impressao automatica dos pedidos do Acougue Bom Jardim"
+    $shortcut.Save()
+  }
+} catch { Write-Log ("Aviso: nao foi possivel criar atalho de inicializacao: " + $_.Exception.Message) }
+
 function Write-Log([string]$Message) {
   $line = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $Message"
   Add-Content -Path $LogFile -Value $line -Encoding UTF8
@@ -55,7 +70,7 @@ function Wrap-Text([string]$Value, [int]$Width = 48) {
   return $result
 }
 function Money([object]$Value) {
-  return ("R$ {0:N2}" -f [decimal]$Value).Replace(".", "#").Replace(",", ".").Replace("#", ",")
+  return ("R$ " + ([decimal]$Value).ToString("N2", [Globalization.CultureInfo]::GetCultureInfo("pt-BR")))
 }
 function Build-Receipt($Order) {
   $b = New-Object System.Text.StringBuilder
@@ -152,7 +167,7 @@ function Print-Order($Order) {
   # Grava o ID somente depois que os dados foram enviados; evita impressao duplicada em novas tentativas.
   $printed += $id
   $temp = $PrintedFile + ".tmp"
-  ConvertTo-Json -InputObject @($printed) -Depth 3 | Set-Content -Path $temp -Encoding UTF8
+  ConvertTo-Json -InputObject (,$printed) -Depth 3 | Set-Content -Path $temp -Encoding UTF8
   Move-Item -Path $temp -Destination $PrintedFile -Force
   Write-Log ("Impresso " + $id)
   return @{ success = $true; alreadyPrinted = $false }
