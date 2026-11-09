@@ -147,8 +147,12 @@ function Print-Order($Order, [string]$Html) {
   }
 
 
+  if ([string]::IsNullOrWhiteSpace($Html)) {
+    # Nunca imprimir o recibo RAW antigo: o automatico deve usar exclusivamente o HTML do painel.
+    throw "HTML do comprovante nao recebido. Impressao cancelada para evitar o layout antigo/incompleto."
+  }
   if (![string]::IsNullOrWhiteSpace($Html)) {
-    # Usa o HTML produzido pelo mesmo construtor do botão manual no painel.
+    # Usa exclusivamente o HTML produzido pelo mesmo construtor do botão manual no painel.
     $programFiles = [Environment]::GetFolderPath("ProgramFiles")
     $programFilesX86 = [Environment]::GetFolderPath("ProgramFilesX86")
     $edgeCandidates = @(
