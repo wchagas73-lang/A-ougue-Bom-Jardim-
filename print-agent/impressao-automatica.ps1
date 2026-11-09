@@ -149,23 +149,33 @@ function Print-Order($Order, [string]$Html) {
 
   if (![string]::IsNullOrWhiteSpace($Html)) {
     # Usa o HTML produzido pelo mesmo construtor do botão manual no painel.
+    $programFiles = [Environment]::GetFolderPath("ProgramFiles")
+    $programFilesX86 = [Environment]::GetFolderPath("ProgramFilesX86")
     $edgeCandidates = @(
-      (Join-Path $env:ProgramFiles "Microsoft\Edge\Application\msedge.exe"),
-      (Join-Path ${env:ProgramFiles(x86)} "Microsoft\Edge\Application\msedge.exe")
+      (Join-Path $programFiles "Microsoft\Edge\Application\msedge.exe"),
+      (Join-Path $programFilesX86 "Microsoft\Edge\Application\msedge.exe")
     ) | Where-Object { $_ -and (Test-Path $_) }
     $edgeCommand = Get-Command msedge.exe -ErrorAction SilentlyContinue
     $edgePath = if ($edgeCandidates.Count -gt 0) { $edgeCandidates[0] } elseif ($edgeCommand) { $edgeCommand.Source } else { $null }
     if (!$edgePath) { throw "Microsoft Edge nao encontrado. A impressao automatica com o layout completo precisa do Edge instalado." }
-    $htmlPath = Join-Path $env:TEMP ("BomJardim-" + [Guid]::NewGuid().ToString("N") + ".html")
+    $jobToken = [Guid]::NewGuid().ToString("N")
+    $htmlPath = Join-Path $env:TEMP ("BomJardim-" + $jobToken + ".html")
+    $profilePath = Join-Path $env:TEMP ("BomJardimEdge-" + $jobToken)
     try {
       [IO.File]::WriteAllText($htmlPath, $Html, (New-Object System.Text.UTF8Encoding($false)))
       $fileUri = ([Uri]$htmlPath).AbsoluteUri
-      $arguments = '--headless --disable-gpu --no-first-run --no-default-browser-check --disable-extensions --no-pdf-header-footer --print-to-printer="' + $PrinterName + '" "' + $fileUri + '"'
-      $process = Start-Process -FilePath $edgePath -ArgumentList $arguments -PassThru -Wait -WindowStyle Hidden
+      # Perfil isolado impede que uma janela Edge ja aberta capture o comando de impressao.
+      $arguments = '--headless --disable-gpu --no-first-run --no-default-browser-check --disable-extensions --no-pdf-header-footer --user-data-dir="' + $profilePath + '" --print-to-printer="' + $PrinterName + '" "' + $fileUri + '"'
+      $process = Start-Process -FilePath $edgePath -ArgumentList $arguments -PassThru -WindowStyle Hidden
+      if (!$process.WaitForExit(60000)) {
+        try { $process.Kill() } catch {}
+        throw "O Edge demorou mais de 60 segundos para preparar a impressao."
+      }
       if ($process.ExitCode -ne 0) { throw "O Edge retornou erro ao imprimir o comprovante (codigo $($process.ExitCode))." }
       Write-Log ("HTML do pedido enviado para " + $PrinterName + " usando o layout do painel.")
     } finally {
       if (Test-Path $htmlPath) { Remove-Item $htmlPath -Force -ErrorAction SilentlyContinue }
+      if (Test-Path $profilePath) { Remove-Item $profilePath -Recurse -Force -ErrorAction SilentlyContinue }
     }
   } else {
   $text = Build-Receipt $Order
