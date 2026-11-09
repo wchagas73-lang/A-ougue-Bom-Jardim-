@@ -70,7 +70,14 @@ function Wrap-Text([string]$Value, [int]$Width = 48) {
   return $result
 }
 function Money([object]$Value) {
-  return ("R$ " + ([decimal]$Value).ToString("N2", [Globalization.CultureInfo]::GetCultureInfo("pt-BR")))
+  $amount = 0.0
+  if ($Value -is [string]) {
+    $parsed = [decimal]::TryParse([string]$Value, [Globalization.NumberStyles]::Any, [Globalization.CultureInfo]::InvariantCulture, [ref]$amount)
+    if (!$parsed) { throw "Valor monetario invalido." }
+  } else {
+    $amount = [decimal]$Value
+  }
+  return ("R$ " + $amount.ToString("N2", [Globalization.CultureInfo]::GetCultureInfo("pt-BR")))
 }
 function Build-Receipt($Order) {
   $b = New-Object System.Text.StringBuilder
