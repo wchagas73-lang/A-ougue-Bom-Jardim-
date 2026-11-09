@@ -169,7 +169,8 @@ function Print-Order($Order, [string]$Html) {
       [IO.File]::WriteAllText($htmlPath, $Html, ([System.Text.UTF8Encoding]::new($false)))
       $fileUri = ([Uri]$htmlPath).AbsoluteUri
       # Perfil isolado impede que uma janela Edge ja aberta capture o comando de impressao.
-      $arguments = '--headless --disable-gpu --no-first-run --no-default-browser-check --disable-extensions --no-pdf-header-footer --user-data-dir="' + $profilePath + '" --print-to-printer="' + $PrinterName + '" "' + $fileUri + '"'
+      $copyProfilePath = $profilePath + "-copy-" + $copy
+        $arguments = '--headless --disable-gpu --no-first-run --no-default-browser-check --disable-extensions --no-pdf-header-footer --user-data-dir="' + $copyProfilePath + '" --print-to-printer="' + $PrinterName + '" "' + $fileUri + '"'
       # O automatico imprime duas vias completas; o botao manual permanece inalterado.
       for ($copy = 1; $copy -le 2; $copy++) {
         $process = Start-Process -FilePath $edgePath -ArgumentList $arguments -PassThru -WindowStyle Hidden
@@ -183,6 +184,7 @@ function Print-Order($Order, [string]$Html) {
     } finally {
       if (Test-Path $htmlPath) { Remove-Item $htmlPath -Force -ErrorAction SilentlyContinue }
       if (Test-Path $profilePath) { Remove-Item $profilePath -Recurse -Force -ErrorAction SilentlyContinue }
+      foreach ($copy in 1..2) { $copyProfilePath = $profilePath + "-copy-" + $copy; if (Test-Path $copyProfilePath) { Remove-Item $copyProfilePath -Recurse -Force -ErrorAction SilentlyContinue } }
     }
   } else {
   $text = Build-Receipt $Order
