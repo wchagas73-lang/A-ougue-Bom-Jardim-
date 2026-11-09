@@ -166,13 +166,16 @@ function Print-Order($Order, [string]$Html) {
       $fileUri = ([Uri]$htmlPath).AbsoluteUri
       # Perfil isolado impede que uma janela Edge ja aberta capture o comando de impressao.
       $arguments = '--headless --disable-gpu --no-first-run --no-default-browser-check --disable-extensions --no-pdf-header-footer --user-data-dir="' + $profilePath + '" --print-to-printer="' + $PrinterName + '" "' + $fileUri + '"'
-      $process = Start-Process -FilePath $edgePath -ArgumentList $arguments -PassThru -WindowStyle Hidden
-      if (!$process.WaitForExit(60000)) {
-        try { $process.Kill() } catch {}
-        throw "O Edge demorou mais de 60 segundos para preparar a impressao."
+      # O automatico imprime duas vias completas; o botao manual permanece inalterado.
+      for ($copy = 1; $copy -le 2; $copy++) {
+        $process = Start-Process -FilePath $edgePath -ArgumentList $arguments -PassThru -WindowStyle Hidden
+        if (!$process.WaitForExit(60000)) {
+          try { $process.Kill() } catch {}
+          throw "O Edge demorou mais de 60 segundos para preparar a via $copy."
+        }
+        if ($process.ExitCode -ne 0) { throw "O Edge retornou erro ao imprimir a via $copy (codigo $($process.ExitCode))." }
+        Write-Log ("Via " + $copy + " de 2 enviada para " + $PrinterName + " usando o layout do painel.")
       }
-      if ($process.ExitCode -ne 0) { throw "O Edge retornou erro ao imprimir o comprovante (codigo $($process.ExitCode))." }
-      Write-Log ("HTML do pedido enviado para " + $PrinterName + " usando o layout do painel.")
     } finally {
       if (Test-Path $htmlPath) { Remove-Item $htmlPath -Force -ErrorAction SilentlyContinue }
       if (Test-Path $profilePath) { Remove-Item $profilePath -Recurse -Force -ErrorAction SilentlyContinue }
@@ -183,9 +186,12 @@ function Print-Order($Order, [string]$Html) {
   $payload = New-Object System.Collections.Generic.List[byte]
   # ESC @: inicializa; ESC t 3: tabela PC860 para acentos em portugues.
   $payload.AddRange([byte[]](0x1B, 0x40, 0x1B, 0x74, 0x03))
-  $payload.AddRange($encoding.GetBytes($text))
-  # Avanca o papel e executa corte parcial.
-  $payload.AddRange([byte[]](0x0A, 0x0A, 0x1D, 0x56, 0x42, 0x00))
+  # Fallback antigo tambem imprime duas vias no fluxo automatico.
+  for ($copy = 1; $copy -le 2; $copy++) {
+    $payload.AddRange($encoding.GetBytes($text))
+    # Avanca o papel e executa corte parcial entre as vias.
+    $payload.AddRange([byte[]](0x0A, 0x0A, 0x1D, 0x56, 0x42, 0x00))
+  }
 
   # Envia os bytes ESC/POS pela fila do Windows, usando a porta USB001 da impressora instalada.
   if (-not ("BomJardimPrintNative" -as [type])) {
