@@ -5,6 +5,7 @@ import { loadPublicCatalog, loadAdminCatalog, saveAdminProduct, deleteAdminProdu
 
 
 const baseCategories = ["Todos","Boi","Porco","Aves","Churrasco","Diversos"];
+const stripAccents = value => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 const money = n => Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const statusClass = value => ({ "Novo":"novo", "Aguardando resolução":"aguardando-resolucao", "Em preparação":"em-preparacao", "Saiu para entrega":"saiu-para-entrega", "Entregue":"entregue", "Retornando":"retornando", "Retornado":"retornando", "Cancelado":"cancelado" }[value] || "status-padrao");
 const load = (key,fallback) => { try { const v=localStorage.getItem(key); return v?JSON.parse(v):fallback; } catch { return fallback; } };
@@ -167,7 +168,7 @@ export default function App(){
     (customer.notes?"\n📝 Observações: "+customer.notes:"")+"\n\n❤️ Obrigado pela preferência!\nPedido fictício para demonstração.";
    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",reference:"",payment:"Pix",change:"",notes:""});
    setNotice("Pedido de demonstração criado! Abrindo o WhatsApp da loja.");
-   const boldWhatsAppMessage=whatsappMessage.split("\n").map(line=>line.trim()?"*"+line+"*":line).join("\n");
+   const boldWhatsAppMessage=whatsappMessage.normalize("NFD").replace(/[\u0300-\u036f]/g, "").split("\n").map(line=>line.trim()?"*"+line+"*":line).join("\n");
    window.location.assign("https://wa.me/"+STORE_WHATSAPP+"?text="+encodeURIComponent(boldWhatsAppMessage));
    return;
   }
@@ -205,7 +206,7 @@ export default function App(){
     (customer.notes?"\n📝 Observações: "+customer.notes:"")+"\n\n❤️ Obrigado pela preferência!";
    const whatsappNumber=STORE_WHATSAPP;
    if(!whatsappNumber)throw new Error("O WhatsApp de recebimento da loja não está configurado.");
-   const boldWhatsAppMessage=whatsappMessage.split("\n").map(line=>line.trim()?"*"+line+"*":line).join("\n");
+   const boldWhatsAppMessage=whatsappMessage.normalize("NFD").replace(/[\u0300-\u036f]/g, "").split("\n").map(line=>line.trim()?"*"+line+"*":line).join("\n");
    const whatsappUrl="https://wa.me/"+whatsappNumber+"?text="+encodeURIComponent(boldWhatsAppMessage);
    window.location.assign(whatsappUrl);
    setCart([]);setCartOpen(false);setCustomer({name:"",phone:"",address:"",reference:"",payment:"Pix",change:"",notes:""});
