@@ -3,7 +3,7 @@
 ## O que faz
 - O painel autenticado consulta os pedidos reais da loja.
 - Pedidos novos são enviados ao serviço local do computador.
-- O serviço imprime diretamente na Elgin i8 pelo endereço fixo `192.168.1.5:9100`, sem abrir a janela de impressão.
+- O serviço envia os dados ESC/POS pela fila de impressão do Windows para a impressora `Elgin i8`, usando a porta configurada no Windows (neste computador, `USB001`), sem abrir a janela de impressão.
 - O identificador do pedido fica salvo no computador para impedir impressão duplicada.
 - Pedidos anteriores à ativação são marcados como já existentes na primeira inicialização e não são reimpressos.
 
@@ -15,9 +15,9 @@
 5. Mantenha o painel administrativo aberto e conectado à internet.
 
 ## Impressora
-- IP: `192.168.1.5`
-- Porta RAW: `9100`
-- O computador precisa estar na mesma rede local da impressora.
+- Nome da fila do Windows: `Elgin i8`.
+- Selecione a porta USB `USB001` nas propriedades da impressora.
+- O serviço usa o spooler do Windows e envia os dados no formato RAW; não depende do IP da impressora nem da rede local.
 
 ## Segurança e comportamento
 - O serviço escuta somente em `127.0.0.1`; não abre uma porta para a rede local ou para a internet.
