@@ -4,6 +4,10 @@ cd /d "%~dp0"
 set "DATA_DIR=%ProgramData%\BomJardimPrint"
 set "ACL_MARKER=%DATA_DIR%\urlacl-installed.txt"
 
+rem Se o agente ja estiver ativo, nao abre outra instancia.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "if (Get-NetTCPConnection -LocalPort 17891 -State Listen -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"
+if not errorlevel 1 exit /b 0
+
 if not exist "%ACL_MARKER%" (
   net session >nul 2>&1
   if errorlevel 1 (
@@ -15,8 +19,6 @@ if not exist "%ACL_MARKER%" (
   echo installed>"%ACL_MARKER%"
 )
 
-rem Encerra somente instancias anteriores deste agente para evitar conflito na porta 17891.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$me=$PID; Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne $me -and $_.Name -eq 'powershell.exe' -and $_.CommandLine -like '*impressao-automatica.ps1*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }; Start-Sleep -Seconds 2"
-
+rem Inicia uma unica instancia do agente local de impressao.
 start "" /min powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0impressao-automatica.ps1"
 exit /b 0
