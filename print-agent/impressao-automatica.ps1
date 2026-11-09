@@ -313,7 +313,7 @@ try {
       $raw = $reader.ReadToEnd()
       $reader.Close()
       $body = $raw | ConvertFrom-Json
-      $result = Print-Order $body.order
+      $result = Print-Order $body.order $body.html
       Send-Json $response 200 $result $origin
     } catch {
       Write-Log ("Falha na impressao: " + $_.Exception.Message)
