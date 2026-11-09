@@ -131,7 +131,7 @@ function Build-Receipt($Order) {
   return $b.ToString()
 }
 
-function Print-Order($Order) {
+function Print-Order($Order, [string]$Html) {
   $id = [string]$Order.id
   if ([string]::IsNullOrWhiteSpace($id) -or $id -notmatch '^[0-9a-fA-F-]{36}$') {
     throw "Identificador de pedido invalido."
@@ -146,6 +146,38 @@ function Print-Order($Order) {
     throw "Pedido sem dados completos para impressao."
   }
 
+
+  if (![string]::IsNullOrWhiteSpace($Html)) {
+    # Usa o HTML produzido pelo mesmo construtor do botão manual no painel.
+    $programFiles = [Environment]::GetFolderPath("ProgramFiles")
+    $programFilesX86 = [Environment]::GetFolderPath("ProgramFilesX86")
+    $edgeCandidates = @(
+      (Join-Path $programFiles "Microsoft\Edge\Application\msedge.exe"),
+      (Join-Path $programFilesX86 "Microsoft\Edge\Application\msedge.exe")
+    ) | Where-Object { $_ -and (Test-Path $_) }
+    $edgeCommand = Get-Command msedge.exe -ErrorAction SilentlyContinue
+    $edgePath = if ($edgeCandidates.Count -gt 0) { $edgeCandidates[0] } elseif ($edgeCommand) { $edgeCommand.Source } else { $null }
+    if (!$edgePath) { throw "Microsoft Edge nao encontrado. A impressao automatica com o layout completo precisa do Edge instalado." }
+    $jobToken = [Guid]::NewGuid().ToString("N")
+    $htmlPath = Join-Path $env:TEMP ("BomJardim-" + $jobToken + ".html")
+    $profilePath = Join-Path $env:TEMP ("BomJardimEdge-" + $jobToken)
+    try {
+      [IO.File]::WriteAllText($htmlPath, $Html, ([System.Text.UTF8Encoding]::new($false)))
+      $fileUri = ([Uri]$htmlPath).AbsoluteUri
+      # Perfil isolado impede que uma janela Edge ja aberta capture o comando de impressao.
+      $arguments = '--headless --disable-gpu --no-first-run --no-default-browser-check --disable-extensions --no-pdf-header-footer --user-data-dir="' + $profilePath + '" --print-to-printer="' + $PrinterName + '" "' + $fileUri + '"'
+      $process = Start-Process -FilePath $edgePath -ArgumentList $arguments -PassThru -WindowStyle Hidden
+      if (!$process.WaitForExit(60000)) {
+        try { $process.Kill() } catch {}
+        throw "O Edge demorou mais de 60 segundos para preparar a impressao."
+      }
+      if ($process.ExitCode -ne 0) { throw "O Edge retornou erro ao imprimir o comprovante (codigo $($process.ExitCode))." }
+      Write-Log ("HTML do pedido enviado para " + $PrinterName + " usando o layout do painel.")
+    } finally {
+      if (Test-Path $htmlPath) { Remove-Item $htmlPath -Force -ErrorAction SilentlyContinue }
+      if (Test-Path $profilePath) { Remove-Item $profilePath -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+  } else {
   $text = Build-Receipt $Order
   $encoding = [Text.Encoding]::GetEncoding(860)
   $payload = New-Object System.Collections.Generic.List[byte]
@@ -234,6 +266,7 @@ public static class BomJardimPrintNative {
     [void][BomJardimPrintNative]::ClosePrinter($printerHandle)
   }
 
+  }
   # Grava o ID somente depois que os dados foram enviados; evita impressao duplicada em novas tentativas.
   $printed += $id
   $temp = $PrintedFile + ".tmp"
@@ -268,7 +301,7 @@ try {
       continue
     }
     if ($request.HttpMethod -eq "GET" -and $request.Url.AbsolutePath -eq "/health") {
-      Send-Json $response 200 @{ ok = $true; printer = $PrinterName; transport = "windows-spooler-raw" } $origin
+      Send-Json $response 200 @{ ok = $true; printer = $PrinterName; transport = "edge-html-silent" } $origin
       continue
     }
     if ($request.HttpMethod -ne "POST" -or $request.Url.AbsolutePath -ne "/print") {
@@ -280,7 +313,7 @@ try {
       $raw = $reader.ReadToEnd()
       $reader.Close()
       $body = $raw | ConvertFrom-Json
-      $result = Print-Order $body.order
+      $result = Print-Order $body.order $body.html
       Send-Json $response 200 $result $origin
     } catch {
       Write-Log ("Falha na impressao: " + $_.Exception.Message)
