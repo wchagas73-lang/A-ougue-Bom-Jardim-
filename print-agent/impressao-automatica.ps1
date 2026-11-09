@@ -162,7 +162,7 @@ function Print-Order($Order, [string]$Html) {
     $htmlPath = Join-Path $env:TEMP ("BomJardim-" + $jobToken + ".html")
     $profilePath = Join-Path $env:TEMP ("BomJardimEdge-" + $jobToken)
     try {
-      [IO.File]::WriteAllText($htmlPath, $Html, (New-Object System.Text.UTF8Encoding($false)))
+      [IO.File]::WriteAllText($htmlPath, $Html, ([System.Text.UTF8Encoding]::new($false)))
       $fileUri = ([Uri]$htmlPath).AbsoluteUri
       # Perfil isolado impede que uma janela Edge ja aberta capture o comando de impressao.
       $arguments = '--headless --disable-gpu --no-first-run --no-default-browser-check --disable-extensions --no-pdf-header-footer --user-data-dir="' + $profilePath + '" --print-to-printer="' + $PrinterName + '" "' + $fileUri + '"'
