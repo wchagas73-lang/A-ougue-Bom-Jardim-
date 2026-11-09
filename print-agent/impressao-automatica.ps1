@@ -1,8 +1,7 @@
 # Serviço local de impressão automática — Açougue Bom Jardim / Elgin i8
 # Escuta somente em 127.0.0.1 e aceita chamadas do domínio do cardápio.
 $ErrorActionPreference = "Stop"
-$PrinterIp = "192.168.1.5"
-$PrinterPort = 9100
+$PrinterName = "Elgin i8"
 $ListenUrl = "http://127.0.0.1:17891/"
 $DataDir = Join-Path $env:ProgramData "BomJardimPrint"
 $PrintedFile = Join-Path $DataDir "printed-orders.json"
@@ -156,19 +155,83 @@ function Print-Order($Order) {
   # Avanca o papel e executa corte parcial.
   $payload.AddRange([byte[]](0x0A, 0x0A, 0x1D, 0x56, 0x42, 0x00))
 
-  $client = New-Object System.Net.Sockets.TcpClient
-  $client.SendTimeout = 7000
-  $client.ReceiveTimeout = 7000
+  # Envia os bytes ESC/POS pela fila do Windows, usando a porta USB001 da impressora instalada.
+  if (-not ("BomJardimPrintNative" -as [type])) {
+    Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+
+[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+public struct BomJardimDocInfo1 {
+    public string pDocName;
+    public string pOutputFile;
+    public string pDatatype;
+}
+
+public static class BomJardimPrintNative {
+    [DllImport("winspool.drv", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool OpenPrinter(string pPrinterName, out IntPtr phPrinter, IntPtr pDefault);
+
+    [DllImport("winspool.drv", SetLastError = true)]
+    public static extern bool ClosePrinter(IntPtr hPrinter);
+
+    [DllImport("winspool.drv", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern int StartDocPrinter(IntPtr hPrinter, int level, ref BomJardimDocInfo1 docInfo);
+
+    [DllImport("winspool.drv", SetLastError = true)]
+    public static extern bool EndDocPrinter(IntPtr hPrinter);
+
+    [DllImport("winspool.drv", SetLastError = true)]
+    public static extern bool StartPagePrinter(IntPtr hPrinter);
+
+    [DllImport("winspool.drv", SetLastError = true)]
+    public static extern bool EndPagePrinter(IntPtr hPrinter);
+
+    [DllImport("winspool.drv", SetLastError = true)]
+    public static extern bool WritePrinter(IntPtr hPrinter, IntPtr bytes, int count, out int written);
+}
+"@
+  }
+
+  $printerHandle = [IntPtr]::Zero
+  if (-not [BomJardimPrintNative]::OpenPrinter($PrinterName, [ref]$printerHandle, [IntPtr]::Zero)) {
+    throw "O Windows nao conseguiu abrir a fila da impressora '$PrinterName'. Verifique o nome e se ela esta pronta."
+  }
+  $jobStarted = $false
+  $pageStarted = $false
+  $buffer = [IntPtr]::Zero
   try {
-    $async = $client.BeginConnect($PrinterIp, $PrinterPort, $null, $null)
-    if (!$async.AsyncWaitHandle.WaitOne(7000, $false)) { throw "Tempo esgotado ao conectar na Elgin i8." }
-    $client.EndConnect($async)
-    $stream = $client.GetStream()
+    $docInfo = New-Object BomJardimDocInfo1
+    $docInfo.pDocName = "Pedido Açougue Bom Jardim"
+    $docInfo.pOutputFile = $null
+    $docInfo.pDatatype = "RAW"
+    $jobId = [BomJardimPrintNative]::StartDocPrinter($printerHandle, 1, [ref]$docInfo)
+    if ($jobId -le 0) { throw "O Windows nao iniciou o trabalho de impressao (erro $([Runtime.InteropServices.Marshal]::GetLastWin32Error()))." }
+    $jobStarted = $true
+    if (-not [BomJardimPrintNative]::StartPagePrinter($printerHandle)) {
+      throw "O Windows nao conseguiu iniciar a pagina (erro $([Runtime.InteropServices.Marshal]::GetLastWin32Error()))."
+    }
+    $pageStarted = $true
     $bytes = $payload.ToArray()
-    $stream.Write($bytes, 0, $bytes.Length)
-    $stream.Flush()
+    $buffer = [Runtime.InteropServices.Marshal]::AllocHGlobal($bytes.Length)
+    [Runtime.InteropServices.Marshal]::Copy($bytes, 0, $buffer, $bytes.Length)
+    $written = 0
+    if (-not [BomJardimPrintNative]::WritePrinter($printerHandle, $buffer, $bytes.Length, [ref]$written) -or $written -ne $bytes.Length) {
+      throw "Falha ao enviar os dados para a fila USB da Elgin i8 (erro $([Runtime.InteropServices.Marshal]::GetLastWin32Error()))."
+    }
+    if (-not [BomJardimPrintNative]::EndPagePrinter($printerHandle)) {
+      throw "Falha ao finalizar a pagina de impressao."
+    }
+    $pageStarted = $false
+    if (-not [BomJardimPrintNative]::EndDocPrinter($printerHandle)) {
+      throw "Falha ao finalizar o trabalho de impressao."
+    }
+    $jobStarted = $false
   } finally {
-    $client.Close()
+    if ($buffer -ne [IntPtr]::Zero) { [Runtime.InteropServices.Marshal]::FreeHGlobal($buffer) }
+    if ($pageStarted) { [void][BomJardimPrintNative]::EndPagePrinter($printerHandle) }
+    if ($jobStarted) { [void][BomJardimPrintNative]::EndDocPrinter($printerHandle) }
+    [void][BomJardimPrintNative]::ClosePrinter($printerHandle)
   }
 
   # Grava o ID somente depois que os dados foram enviados; evita impressao duplicada em novas tentativas.
@@ -184,7 +247,7 @@ $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add($ListenUrl)
 try {
   $listener.Start()
-  Write-Log "Servico iniciado em 127.0.0.1:17891; impressora 192.168.1.5:9100."
+  Write-Log "Servico iniciado em 127.0.0.1:17891; fila do Windows: $PrinterName."
   while ($listener.IsListening) {
     $context = $listener.GetContext()
     $request = $context.Request
@@ -205,7 +268,7 @@ try {
       continue
     }
     if ($request.HttpMethod -eq "GET" -and $request.Url.AbsolutePath -eq "/health") {
-      Send-Json $response 200 @{ ok = $true; printer = $PrinterIp } $origin
+      Send-Json $response 200 @{ ok = $true; printer = $PrinterName; transport = "windows-spooler-raw" } $origin
       continue
     }
     if ($request.HttpMethod -ne "POST" -or $request.Url.AbsolutePath -ne "/print") {
