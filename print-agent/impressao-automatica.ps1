@@ -24,7 +24,7 @@ try {
     $shortcut.Description = "Impressao automatica dos pedidos do Acougue Bom Jardim"
     $shortcut.Save()
   }
-} catch { Write-Log ("Aviso: nao foi possivel criar atalho de inicializacao: " + $_.Exception.Message) }
+} catch { Add-Content -Path $LogFile -Value ("Aviso: nao foi possivel criar atalho de inicializacao: " + $_.Exception.Message) -Encoding UTF8 }
 
 function Write-Log([string]$Message) {
   $line = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $Message"
